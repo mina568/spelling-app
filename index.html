@@ -39,14 +39,23 @@
   .card{background:white; border:2px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;}
   .card.allDone{border-color:var(--green);}
   .wtop{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
-  .wen{font-family:'Kalam',cursive; font-size:20px;}
   .jaBtn{font-size:11px; color:var(--muted); background:none; border:none; text-decoration:underline; cursor:pointer;}
   .stages{display:flex; gap:6px;}
   .stage{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px;
     border-radius:8px; border:1.5px solid var(--line); background:none; cursor:pointer; font-size:15px;}
   .stage span{font-size:10px; color:var(--muted);}
-  .stage.active{border-color:var(--green); background:rgba(79,143,91,0.12);}
-  .stage.active span{color:var(--green); font-weight:700;}
+  .stage.active{border-color:var(--blue); background:rgba(43,95,168,0.10);}
+  .stage.active span{color:var(--blue); font-weight:700;}
+  .cardBody{margin-top:10px;}
+  .wordDisplay{font-family:'Kalam',cursive; font-size:28px; text-align:center; padding:16px 0; color:var(--ink);}
+  .wordDisplay.covered{color:var(--muted); letter-spacing:5px; font-family:'IBM Plex Mono',monospace; font-size:20px;}
+  .writeArea{display:flex; flex-direction:column; gap:8px; align-items:center;}
+  .padCanvas{width:100%; height:130px; background:white; border:1.5px dashed var(--line); border-radius:8px; touch-action:none;}
+  .clearBtn{font-size:11px; color:var(--muted); background:none; border:1px solid var(--line); border-radius:6px; padding:5px 12px; cursor:pointer;}
+  .checkArea{text-align:center;}
+  .answerText{font-family:'Kalam',cursive; font-size:20px; margin:4px 0 6px;}
+  .gradedNote{font-size:13px; font-weight:700; margin:0;}
+  .idleHint{font-size:12px; color:var(--muted); text-align:center; padding:16px 0;}
   .testBox{background:white; border:2px solid var(--line); border-radius:12px; padding:20px; text-align:center;}
   .startBtn{background:var(--blue); color:white; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;}
   .qword{font-family:'Kalam',cursive; font-size:36px; color:var(--blue); margin:6px 0;}
@@ -63,7 +72,6 @@
   .footerRow{text-align:right; margin-top:14px; font-size:11px; color:var(--muted);}
   .footerRow button{background:none; border:none; color:inherit; text-decoration:underline; cursor:pointer; font-size:11px;}
   .infoBox{background:white; border:1.5px dashed var(--line); border-radius:8px; padding:10px; font-size:12px; line-height:1.6; margin-bottom:12px;}
-  /* Word manager */
   .manager{background:white; border:2px solid var(--line); border-radius:12px; padding:14px;}
   .mrow{display:flex; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;}
   .mrow input[type=text]{flex:1; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12px; min-width:0;}
@@ -80,7 +88,7 @@
 <div class="board" id="board"></div>
 
 <script>
-const STORAGE_KEY = 'spelling-app-v1';
+const STORAGE_KEY = 'spelling-app-v2';
 
 const DEFAULT_WORDS = [
   {id:1,en:'family',ja:'家族',introDay:1},
@@ -156,16 +164,17 @@ function render(){
       <p class="sub">2週間で「聞いて書ける」を目指す練習表</p>
     </div>
     <div style="display:flex; gap:6px;">
-      <button class="iconbtn" onclick="toggleManager()" title="単語を編集">✎</button>
+      <button class="iconbtn" onclick="toggleManager()" title="単語を編集">&#9998;</button>
       <button class="iconbtn" onclick="toggleInfo()" title="使い方">?</button>
     </div>
   </div>`;
 
   if(view.showInfo){
     html += `<div class="infoBox">
-      <b>Day1〜6</b>：単語を「見る→かくす→書く→たしかめる」の4ステップで覚える練習。<br>
+      <b>Day1〜6</b>：カードの&#128064;見る→&#128584;かくす→&#9999;かく→&#9989;たしかめ、の順にボタンを押して練習。<br>
+      「かく」では画面に指（またはマウス）でなぞって書ける練習用のボードが出るよ。「たしかめ」で正解を表示して、書けたものと見比べて○×を判定してね。<br>
       <b>Day7〜14</b>：先生が単語を言うテスト形式。読み上げて紙に書かせ、○×だけタップ。にがてな単語ほど多めに出てくるよ。<br>
-      <b>✎ 単語を編集</b>から、単語の追加・変更・入れ替えができるよ。
+      <b>&#9998; 単語を編集</b>から、単語の追加・変更・入れ替えができるよ。
     </div>`;
   }
 
@@ -182,7 +191,7 @@ function render(){
     html += `<div class="weakSection">
       <p class="weakTitle">にがてリスト</p>`;
     if(weak.length===0){
-      html += `<p style="font-size:12px;color:var(--muted);">まだ苦手な単語は記録されていません（テストをすると出てきます）</p>`;
+      html += `<p style="font-size:12px;color:var(--muted);">まだ苦手な単語は記録されていません（練習やテストをすると出てきます）</p>`;
     } else {
       html += `<div class="tags">${weak.map(w=>`<span class="tag">${esc(w.en)}</span>`).join('')}</div>`;
     }
@@ -193,7 +202,7 @@ function render(){
 
     html += `<div class="footerRow">`;
     if(!view.confirmReset){
-      html += `<button onclick="view.confirmReset=true; render();">↺ 記録をリセット</button>`;
+      html += `<button onclick="view.confirmReset=true; render();">&#8635; 記録をリセット</button>`;
     } else {
       html += `本当にリセットする？ <button onclick="resetAll()"><b>はい</b></button> / <button onclick="view.confirmReset=false; render();">いいえ</button>`;
     }
@@ -201,29 +210,66 @@ function render(){
   }
 
   el.innerHTML = html;
+  initCanvases();
 }
 
 function renderPractice(){
   const ids = dayWordIds(view.day);
   if(ids.length===0){
-    return `<p style="font-size:12px;color:var(--muted);">この日に割り当てられた単語がありません。「✎ 単語を編集」から追加してね。</p>`;
+    return `<p style="font-size:12px;color:var(--muted);">この日に割り当てられた単語がありません。「&#9998; 単語を編集」から追加してね。</p>`;
   }
-  return ids.map(id=>{
-    const w = wordById(id);
-    const key = view.day+'-'+id;
-    const steps = state.steps[key] || [false,false,false,false];
-    const allDone = steps.every(Boolean);
-    const stageDefs = [['👀','見る'],['🙈','かくす'],['✏️','かく'],['✅','たしかめ']];
-    return `<div class="card ${allDone?'allDone':''}">
-      <div class="wtop">
-        <span class="wen">${esc(w.en)}</span>
-        <button class="jaBtn" onclick="toggleJa(${id})">${view.revealJa[id]?esc(w.ja):'意味'}</button>
-      </div>
-      <div class="stages">
-        ${stageDefs.map((s,i)=>`<button class="stage ${steps[i]?'active':''}" onclick="toggleStep(${id},${i})">${s[0]}<span>${s[1]}</span></button>`).join('')}
-      </div>
+  return ids.map(id=>renderWordCard(id)).join('');
+}
+
+function renderWordCard(id){
+  const w = wordById(id);
+  const key = view.day+'-'+id;
+  const st = state.steps[key] || {mode:'idle', graded:false};
+  const stages = [['&#128064;','見る','look'],['&#128584;','かくす','cover'],['&#9999;&#65039;','かく','write'],['&#9989;','たしかめ','check']];
+
+  let body;
+  if(st.mode==='look'){
+    body = `<div class="wordDisplay">${esc(w.en)}</div>`;
+  } else if(st.mode==='cover'){
+    const qmarks = '？'.repeat(Math.max(3, Math.min(w.en.replace(/\s/g,'').length, 10)));
+    body = `<div class="wordDisplay covered">${qmarks}</div>`;
+  } else if(st.mode==='write'){
+    body = `<div class="writeArea">
+      <canvas id="cv-${key}" class="padCanvas"></canvas>
+      <button class="clearBtn" onclick="clearCanvas('${key}')">けす</button>
     </div>`;
-  }).join('');
+  } else if(st.mode==='check'){
+    if(st.graded){
+      const color = st.graded==='correct' ? 'var(--green)' : 'var(--red)';
+      const msg = st.graded==='correct' ? '○ せいかい！' : '× もういちど練習しよう';
+      body = `<div class="checkArea">
+        <p class="answerText">正解：<b>${esc(w.en)}</b></p>
+        <p class="gradedNote" style="color:${color}">${msg}</p>
+      </div>`;
+    } else {
+      body = `<div class="checkArea">
+        <p class="answerText">正解：<b>${esc(w.en)}</b></p>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">書けたものと見比べて判定してね</p>
+        <div class="answerRow">
+          <button class="ansBtn ok" onclick="gradeWord(${id},true)">○</button>
+          <button class="ansBtn ng" onclick="gradeWord(${id},false)">×</button>
+        </div>
+      </div>`;
+    }
+  } else {
+    body = `<p class="idleHint">&#128064;から順番にボタンを押してね</p>`;
+  }
+
+  return `<div class="card ${st.graded?'allDone':''}">
+    <div class="wtop">
+      <span style="font-size:11px;color:var(--muted);">単語カード</span>
+      <button class="jaBtn" onclick="toggleJa(${id})">${view.revealJa[id]?esc(w.ja):'意味'}</button>
+    </div>
+    <div class="stages">
+      ${stages.map(s=>`<button class="stage ${st.mode===s[2]?'active':''}" onclick="setStage(${id},'${s[2]}')">${s[0]}<span>${s[1]}</span></button>`).join('')}
+    </div>
+    <div class="cardBody">${body}</div>
+  </div>`;
 }
 
 function renderTest(){
@@ -257,7 +303,7 @@ function renderManager(){
       <select onchange="updateWord(${w.id},'introDay',parseInt(this.value))">
         ${[1,2,3,4].map(d=>`<option value="${d}" ${w.introDay===d?'selected':''}>Day${d}</option>`).join('')}
       </select>
-      <button class="delBtn" onclick="deleteWord(${w.id})">✕</button>
+      <button class="delBtn" onclick="deleteWord(${w.id})">&#10005;</button>
     </div>`).join('');
   html += `
     <div class="addForm">
@@ -276,13 +322,68 @@ function toggleInfo(){ view.showInfo = !view.showInfo; render(); }
 function toggleManager(){ view.showManager = !view.showManager; render(); }
 function setDay(d){ view.day=d; view.testQueue=null; render(); }
 function toggleJa(id){ view.revealJa[id] = !view.revealJa[id]; render(); }
-function toggleStep(id, idx){
+
+function setStage(id, mode){
   const key = view.day+'-'+id;
-  const cur = state.steps[key] || [false,false,false,false];
-  cur[idx] = !cur[idx];
-  state.steps[key] = cur;
+  const st = state.steps[key] || {mode:'idle', graded:false};
+  st.mode = mode;
+  state.steps[key] = st;
   saveState(); render();
 }
+
+function clearCanvas(key){
+  const cv = document.getElementById('cv-'+key);
+  if(cv){ const ctx=cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height); }
+}
+
+function gradeWord(id, correct){
+  const key = view.day+'-'+id;
+  const st = state.steps[key] || {mode:'check', graded:false};
+  st.mode = 'check';
+  st.graded = correct ? 'correct' : 'wrong';
+  state.steps[key] = st;
+
+  const s = state.stats[id] || {correct:0,wrong:0,streak:0};
+  state.stats[id] = correct
+    ? {correct:s.correct+1, wrong:s.wrong, streak:s.streak+1}
+    : {correct:s.correct, wrong:s.wrong+1, streak:0};
+
+  const ids = dayWordIds(view.day);
+  const allGraded = ids.length>0 && ids.every(wid => {
+    const k = view.day+'-'+wid;
+    const s2 = state.steps[k];
+    return s2 && s2.graded;
+  });
+  if(allGraded) state.dayDone[view.day] = true;
+
+  saveState(); render();
+}
+
+function initCanvases(){
+  document.querySelectorAll('.padCanvas').forEach(cv=>{
+    if(cv.dataset.inited) return;
+    cv.dataset.inited = '1';
+    const ctx = cv.getContext('2d');
+    const ratio = window.devicePixelRatio || 1;
+    const rect = cv.getBoundingClientRect();
+    cv.width = Math.max(rect.width,1) * ratio;
+    cv.height = Math.max(rect.height,1) * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.strokeStyle = '#1E2530';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    let drawing = false;
+    function pos(e){
+      const r = cv.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+    cv.addEventListener('pointerdown', (e)=>{ drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); });
+    cv.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); });
+    window.addEventListener('pointerup', ()=>{ drawing=false; });
+  });
+}
+
 function startTest(){
   view.testQueue = buildQueue();
   view.testIdx = 0;
