@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#2B5FA8" />
+<title>スペリング特訓ボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EFF3F7; --frame:#232B36; --blue:#2B5FA8; --red:#9C3B4A;
+    --green:#4F8F5B; --ink:#1E2530; --muted:#6B7785; --line:#D7E0E8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#dbe3ea; color:var(--ink); padding:10px;
+  }
+  .board{
+    max-width:520px; margin:0 auto; border:9px solid var(--frame); border-radius:14px;
+    background: repeating-linear-gradient(var(--paper), var(--paper) 26px, var(--line) 27px), var(--paper);
+    padding:16px;
+  }
+  h1{font-family:'Kalam',cursive; color:var(--blue); font-size:24px; margin:0;}
+  .sub{color:var(--muted); font-size:12px; margin:2px 0 14px;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start;}
+  .iconbtn{border:1.5px solid var(--line); background:white; border-radius:999px; width:32px; height:32px; font-size:14px; cursor:pointer;}
+  .progress{display:flex; gap:2px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px;}
+  .pdot{flex-shrink:0; width:20px; height:20px; border-radius:999px; font-family:'IBM Plex Mono',monospace; font-size:10px;
+    display:flex; align-items:center; justify-content:center; border:2px solid var(--line); background:white; color:var(--muted);}
+  .pdot.done{background:var(--green); border-color:var(--green); color:white;}
+  .doneCount{font-size:11px; color:var(--muted); margin-bottom:12px;}
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:12px;}
+  .tab{flex-shrink:0; padding:6px 10px; border-radius:8px; font-size:12px; font-weight:600; border:1.5px solid var(--line);
+    background:white; color:var(--ink); white-space:nowrap; cursor:pointer;}
+  .tab.active{background:var(--blue); border-color:var(--blue); color:white;}
+  .card{background:white; border:2px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;}
+  .card.allDone{border-color:var(--green);}
+  .wtop{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .wen{font-family:'Kalam',cursive; font-size:20px;}
+  .jaBtn{font-size:11px; color:var(--muted); background:none; border:none; text-decoration:underline; cursor:pointer;}
+  .stages{display:flex; gap:6px;}
+  .stage{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px;
+    border-radius:8px; border:1.5px solid var(--line); background:none; cursor:pointer; font-size:15px;}
+  .stage span{font-size:10px; color:var(--muted);}
+  .stage.active{border-color:var(--green); background:rgba(79,143,91,0.12);}
+  .stage.active span{color:var(--green); font-weight:700;}
+  .testBox{background:white; border:2px solid var(--line); border-radius:12px; padding:20px; text-align:center;}
+  .startBtn{background:var(--blue); color:white; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;}
+  .qword{font-family:'Kalam',cursive; font-size:36px; color:var(--blue); margin:6px 0;}
+  .qcount{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
+  .qhint{font-size:12px; color:var(--muted); margin-bottom:18px;}
+  .answerRow{display:flex; justify-content:center; gap:16px;}
+  .ansBtn{width:60px; height:60px; border-radius:999px; border:none; color:white; font-size:24px; cursor:pointer;}
+  .ok{background:var(--green);} .ng{background:var(--red);}
+  .weakSection{border-top:1.5px dashed var(--line); margin-top:16px; padding-top:12px;}
+  .weakTitle{font-family:'Kalam',cursive; color:var(--red); font-size:16px; margin:0 0 8px;}
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
+  .tag{font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid var(--red); color:var(--red); background:rgba(156,59,74,0.08);}
+  .tag.mastered{border-color:var(--green); color:var(--green); background:none; text-decoration:line-through;}
+  .footerRow{text-align:right; margin-top:14px; font-size:11px; color:var(--muted);}
+  .footerRow button{background:none; border:none; color:inherit; text-decoration:underline; cursor:pointer; font-size:11px;}
+  .infoBox{background:white; border:1.5px dashed var(--line); border-radius:8px; padding:10px; font-size:12px; line-height:1.6; margin-bottom:12px;}
+  /* Word manager */
+  .manager{background:white; border:2px solid var(--line); border-radius:12px; padding:14px;}
+  .mrow{display:flex; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .mrow input[type=text]{flex:1; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12px; min-width:0;}
+  .mrow select{border:1px solid var(--line); border-radius:6px; font-size:12px; padding:5px 2px;}
+  .delBtn{color:var(--red); border:none; background:none; font-size:16px; cursor:pointer;}
+  .addForm{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:10px; border-top:1.5px dashed var(--line);}
+  .addForm input[type=text]{flex:1; min-width:80px; border:1px solid var(--line); border-radius:6px; padding:6px; font-size:12px;}
+  .addForm select{border:1px solid var(--line); border-radius:6px; font-size:12px;}
+  .addBtn{background:var(--blue); color:white; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
+  .managerTitle{font-family:'Kalam',cursive; font-size:18px; color:var(--blue); margin:0 0 10px;}
+</style>
+</head>
+<body>
+<div class="board" id="board"></div>
+
+<script>
+const STORAGE_KEY = 'spelling-app-v1';
+
+const DEFAULT_WORDS = [
+  {id:1,en:'family',ja:'家族',introDay:1},
+  {id:2,en:'going',ja:'行く',introDay:1},
+  {id:3,en:'ice cream',ja:'アイスクリーム',introDay:1},
+  {id:4,en:'melt',ja:'とける',introDay:1},
+  {id:5,en:'brother',ja:'兄弟',introDay:1},
+  {id:6,en:'sister',ja:'姉妹',introDay:2},
+  {id:7,en:'excited',ja:'わくわくする',introDay:2},
+  {id:8,en:'trouble',ja:'困りごと',introDay:2},
+  {id:9,en:'pudding',ja:'プディング',introDay:2},
+  {id:10,en:'taste',ja:'味・味わう',introDay:2},
+  {id:11,en:'peas',ja:'えんどう豆',introDay:3},
+  {id:12,en:'equipment',ja:'道具',introDay:3},
+  {id:13,en:'ingredients',ja:'材料',introDay:3},
+  {id:14,en:'instructions',ja:'説明・手順',introDay:3},
+  {id:15,en:'oil',ja:'油',introDay:3},
+  {id:16,en:'seashells',ja:'貝殻',introDay:4},
+  {id:17,en:'splash',ja:'ばしゃっとはねる',introDay:4},
+  {id:18,en:'whisper',ja:'ささやく',introDay:4},
+  {id:19,en:'rhyme',ja:'韻をふむ',introDay:4},
+  {id:20,en:'onomatopoeia',ja:'擬音語',introDay:4},
+];
+
+const DAY_LABELS = {1:'新出①',2:'新出②',3:'新出③',4:'新出④',5:'復習A',6:'復習B',
+  7:'テスト①',8:'テスト②',9:'テスト③',10:'テスト④',11:'テスト⑤',12:'テスト⑥',13:'テスト⑦',14:'本番想定'};
+const DAYS = Object.keys(DAY_LABELS).map(Number);
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { words: DEFAULT_WORDS, nextId: 21, stats:{}, steps:{}, dayDone:{}, dayScore:{} };
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let state = loadState();
+let view = { day:1, showInfo:false, showManager:false, confirmReset:false, revealJa:{},
+  testQueue:null, testIdx:0, testHits:[] };
+
+function dayType(d){ return d<=6 ? 'practice' : 'test'; }
+function dayWordIds(d){
+  if(d<=4) return state.words.filter(w=>w.introDay===d).map(w=>w.id);
+  if(d===5) return state.words.filter(w=>w.introDay===1||w.introDay===2).map(w=>w.id);
+  if(d===6) return state.words.filter(w=>w.introDay===3||w.introDay===4).map(w=>w.id);
+  return state.words.map(w=>w.id);
+}
+function wordById(id){ return state.words.find(w=>w.id===id); }
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+function buildQueue(){
+  const q=[];
+  state.words.forEach(w=>{
+    const s = state.stats[w.id] || {correct:0,wrong:0,streak:0};
+    q.push(w.id);
+    if(s.streak<2) q.push(w.id);
+  });
+  return shuffle(q);
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render(){
+  const el = document.getElementById('board');
+  const doneCount = DAYS.filter(d=>state.dayDone[d]).length;
+  const weak = state.words.filter(w=>{ const s=state.stats[w.id]; return s && s.streak<2 && (s.correct+s.wrong)>0; });
+  const mastered = state.words.filter(w=>{ const s=state.stats[w.id]; return s && s.streak>=3; });
+
+  let html = `
+  <div class="topbar">
+    <div>
+      <h1>スペリング特訓ボード</h1>
+      <p class="sub">2週間で「聞いて書ける」を目指す練習表</p>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="iconbtn" onclick="toggleManager()" title="単語を編集">✎</button>
+      <button class="iconbtn" onclick="toggleInfo()" title="使い方">?</button>
+    </div>
+  </div>`;
+
+  if(view.showInfo){
+    html += `<div class="infoBox">
+      <b>Day1〜6</b>：単語を「見る→かくす→書く→たしかめる」の4ステップで覚える練習。<br>
+      <b>Day7〜14</b>：先生が単語を言うテスト形式。読み上げて紙に書かせ、○×だけタップ。にがてな単語ほど多めに出てくるよ。<br>
+      <b>✎ 単語を編集</b>から、単語の追加・変更・入れ替えができるよ。
+    </div>`;
+  }
+
+  if(view.showManager){
+    html += renderManager();
+  } else {
+    html += `
+    <div class="progress">${DAYS.map(d=>`<div class="pdot ${state.dayDone[d]?'done':''}">${d}</div>`).join('')}</div>
+    <p class="doneCount">完了 ${doneCount} / 14 日</p>
+    <div class="tabs">${DAYS.map(d=>`<button class="tab ${view.day===d?'active':''}" onclick="setDay(${d})">Day${d} ${DAY_LABELS[d]}</button>`).join('')}</div>
+    `;
+    html += dayType(view.day)==='practice' ? renderPractice() : renderTest();
+
+    html += `<div class="weakSection">
+      <p class="weakTitle">にがてリスト</p>`;
+    if(weak.length===0){
+      html += `<p style="font-size:12px;color:var(--muted);">まだ苦手な単語は記録されていません（テストをすると出てきます）</p>`;
+    } else {
+      html += `<div class="tags">${weak.map(w=>`<span class="tag">${esc(w.en)}</span>`).join('')}</div>`;
+    }
+    if(mastered.length>0){
+      html += `<div class="tags">${mastered.map(w=>`<span class="tag mastered">${esc(w.en)}</span>`).join('')}</div>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="footerRow">`;
+    if(!view.confirmReset){
+      html += `<button onclick="view.confirmReset=true; render();">↺ 記録をリセット</button>`;
+    } else {
+      html += `本当にリセットする？ <button onclick="resetAll()"><b>はい</b></button> / <button onclick="view.confirmReset=false; render();">いいえ</button>`;
+    }
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderPractice(){
+  const ids = dayWordIds(view.day);
+  if(ids.length===0){
+    return `<p style="font-size:12px;color:var(--muted);">この日に割り当てられた単語がありません。「✎ 単語を編集」から追加してね。</p>`;
+  }
+  return ids.map(id=>{
+    const w = wordById(id);
+    const key = view.day+'-'+id;
+    const steps = state.steps[key] || [false,false,false,false];
+    const allDone = steps.every(Boolean);
+    const stageDefs = [['👀','見る'],['🙈','かくす'],['✏️','かく'],['✅','たしかめ']];
+    return `<div class="card ${allDone?'allDone':''}">
+      <div class="wtop">
+        <span class="wen">${esc(w.en)}</span>
+        <button class="jaBtn" onclick="toggleJa(${id})">${view.revealJa[id]?esc(w.ja):'意味'}</button>
+      </div>
+      <div class="stages">
+        ${stageDefs.map((s,i)=>`<button class="stage ${steps[i]?'active':''}" onclick="toggleStep(${id},${i})">${s[0]}<span>${s[1]}</span></button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTest(){
+  if(!view.testQueue){
+    const prev = state.dayScore[view.day];
+    return `<div class="testBox">
+      ${prev?`<p style="font-family:'IBM Plex Mono',monospace;color:var(--green);font-size:13px;margin-bottom:10px;">前回のスコア：${prev.correct} / ${prev.total}</p>`:''}
+      <p style="font-size:13px;margin-bottom:16px;">単語を読み上げて、紙に書かせてください。書けたら○か×をタップしてね。</p>
+      <button class="startBtn" onclick="startTest()">テストをはじめる（全${state.words.length}語）</button>
+    </div>`;
+  }
+  const id = view.testQueue[view.testIdx];
+  const w = wordById(id);
+  return `<div class="testBox">
+    <p class="qcount">${view.testIdx+1} / ${view.testQueue.length}</p>
+    <p class="qword">${esc(w.en)}</p>
+    <p class="qhint">これを読み上げて、書けたら判定してね</p>
+    <div class="answerRow">
+      <button class="ansBtn ok" onclick="markAnswer(true)">○</button>
+      <button class="ansBtn ng" onclick="markAnswer(false)">×</button>
+    </div>
+  </div>`;
+}
+
+function renderManager(){
+  let html = `<div class="manager"><p class="managerTitle">単語を編集</p>`;
+  html += state.words.map(w=>`
+    <div class="mrow">
+      <input type="text" value="${esc(w.en)}" onchange="updateWord(${w.id},'en',this.value)" placeholder="英単語">
+      <input type="text" value="${esc(w.ja)}" onchange="updateWord(${w.id},'ja',this.value)" placeholder="意味">
+      <select onchange="updateWord(${w.id},'introDay',parseInt(this.value))">
+        ${[1,2,3,4].map(d=>`<option value="${d}" ${w.introDay===d?'selected':''}>Day${d}</option>`).join('')}
+      </select>
+      <button class="delBtn" onclick="deleteWord(${w.id})">✕</button>
+    </div>`).join('');
+  html += `
+    <div class="addForm">
+      <input type="text" id="newEn" placeholder="新しい英単語">
+      <input type="text" id="newJa" placeholder="意味（任意）">
+      <select id="newDay">${[1,2,3,4].map(d=>`<option value="${d}">Day${d}</option>`).join('')}</select>
+      <button class="addBtn" onclick="addWord()">＋追加</button>
+    </div>
+    <div class="footerRow" style="margin-top:14px;"><button onclick="toggleManager()">← 練習画面にもどる</button></div>
+  </div>`;
+  return html;
+}
+
+// --- actions ---
+function toggleInfo(){ view.showInfo = !view.showInfo; render(); }
+function toggleManager(){ view.showManager = !view.showManager; render(); }
+function setDay(d){ view.day=d; view.testQueue=null; render(); }
+function toggleJa(id){ view.revealJa[id] = !view.revealJa[id]; render(); }
+function toggleStep(id, idx){
+  const key = view.day+'-'+id;
+  const cur = state.steps[key] || [false,false,false,false];
+  cur[idx] = !cur[idx];
+  state.steps[key] = cur;
+  saveState(); render();
+}
+function startTest(){
+  view.testQueue = buildQueue();
+  view.testIdx = 0;
+  view.testHits = [];
+  render();
+}
+function markAnswer(correct){
+  const id = view.testQueue[view.testIdx];
+  const s = state.stats[id] || {correct:0,wrong:0,streak:0};
+  state.stats[id] = correct
+    ? {correct:s.correct+1, wrong:s.wrong, streak:s.streak+1}
+    : {correct:s.correct, wrong:s.wrong+1, streak:0};
+  view.testHits.push({id, correct});
+
+  if(view.testIdx+1 >= view.testQueue.length){
+    const uniqueCorrect = new Set(view.testHits.filter(h=>h.correct).map(h=>h.id)).size;
+    state.dayDone[view.day] = true;
+    state.dayScore[view.day] = {correct: uniqueCorrect, total: state.words.length};
+    view.testQueue = null;
+  } else {
+    view.testIdx++;
+  }
+  saveState(); render();
+}
+function resetAll(){
+  state = { words: state.words, nextId: state.nextId, stats:{}, steps:{}, dayDone:{}, dayScore:{} };
+  view.confirmReset = false;
+  view.testQueue = null;
+  saveState(); render();
+}
+function updateWord(id, field, value){
+  const w = wordById(id);
+  if(!w) return;
+  w[field] = value;
+  saveState();
+}
+function deleteWord(id){
+  state.words = state.words.filter(w=>w.id!==id);
+  saveState(); render();
+}
+function addWord(){
+  const en = document.getElementById('newEn').value.trim();
+  const ja = document.getElementById('newJa').value.trim();
+  const dayVal = parseInt(document.getElementById('newDay').value);
+  if(!en) return;
+  state.words.push({ id: state.nextId, en, ja, introDay: dayVal });
+  state.nextId += 1;
+  saveState(); render();
+}
+
+render();
+</script>
+</body>
+</html>
