@@ -172,22 +172,37 @@
     font-family:'Architects Daughter',cursive; font-size:28px; letter-spacing:3px;
     color:rgba(36,52,74,.22); margin:4px 0 2px; min-height:34px; user-select:none;
   }
-  .ruled{
-    border:none; border-bottom:3px solid var(--ink); background:transparent;
-    width:90%; max-width:340px; text-align:center; font-family:'Architects Daughter',cursive;
-    font-size:28px; color:var(--red); padding:6px 4px; margin-top:6px;
+  .reveal-word{
+    font-family:'Architects Daughter',cursive; font-size:32px; letter-spacing:2px;
+    color:var(--ink); margin-top:16px; user-select:none;
   }
-  .ruled::placeholder{color:transparent;}
+
+  /* ---- handwriting pads ---- */
   .practice-grid{
-    display:flex; flex-direction:column; align-items:center; gap:14px;
+    display:flex; flex-direction:column; align-items:center; gap:16px;
     margin-top:16px;
   }
-  .pline{
-    border:none; border-bottom:3px solid var(--ink); background:transparent;
-    width:90%; max-width:340px; text-align:center; font-family:'Architects Daughter',cursive;
-    font-size:26px; color:var(--red); padding:6px 4px;
+  .pad-wrap{
+    position:relative; width:94%; max-width:400px; margin:0 auto;
   }
-  .pline::placeholder{color:rgba(36,52,74,.35); font-family:'JetBrains Mono',monospace; font-size:12px;}
+  .pad-wrap.pad-lg{ max-width:460px; }
+  .pad-canvas{
+    width:100%; display:block; touch-action:none; border-radius:16px;
+    border:2px dashed var(--line); background:var(--paper-dim);
+    background-repeat:no-repeat;
+    background-image:
+      linear-gradient(rgba(36,52,74,.14), rgba(36,52,74,.14)),
+      linear-gradient(rgba(36,52,74,.14), rgba(36,52,74,.14)),
+      linear-gradient(rgba(36,52,74,.14), rgba(36,52,74,.14));
+    background-size: 100% 1px, 100% 1px, 100% 1px;
+    background-position: 0 33%, 0 66%, 0 99%;
+  }
+  .pad-clear{
+    position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%;
+    border:none; background:rgba(255,255,255,.9); box-shadow:0 2px 6px rgba(36,52,74,.18);
+    font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .pad-slot{ margin-top:14px; }
 
   .feedback{min-height:26px; margin-top:12px; font-weight:700; font-size:14px;}
   .feedback.ok{color:var(--mint);}
@@ -209,6 +224,11 @@
     padding:6px 8px; background:var(--paper); color:var(--ink); font-size:12px;
   }
   .hidden{display:none !important;}
+  .tts-warning{
+    margin:0 20px 8px; padding:10px 12px; background:#FBEAE6; color:var(--red);
+    border:1px solid var(--red-soft); border-radius:10px; font-size:12px; font-weight:700;
+    line-height:1.5;
+  }
 </style>
 </head>
 <body>
@@ -217,6 +237,7 @@
     <h1>えいたん<span class="dot">・</span>カード</h1>
     <div class="sub" id="wordcount">0 words</div>
   </header>
+  <div class="tts-warning hidden" id="tts-warn"></div>
 
   <main>
     <!-- ============ 単語管理 ============ -->
@@ -257,6 +278,7 @@
           <div class="practice-grid" id="practice-grid"></div>
         </div>
         <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" id="practice-clear">ぜんぶクリア</button>
           <button class="btn btn-ghost" id="practice-hint">ヒント</button>
           <button class="btn btn-mint" id="practice-skip">つぎの単語 ▶</button>
         </div>
@@ -269,17 +291,22 @@
         <div class="stagebar">
           <span class="progress-pill" id="test-pill">0 / 0</span>
           <span class="streak" id="test-streak">streak 0</span>
+          <button class="btn btn-ghost btn-sm" id="test-restart">🔄 さいしょから</button>
         </div>
         <div class="card">
           <div class="flash" id="test-flash">
             <button class="speaker" id="test-speak">🔊</button>
             <div class="ja-hint" id="test-ja"></div>
-            <input class="ruled" id="test-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="かいてみよう">
+            <div class="pad-slot" id="test-pad-slot"></div>
+            <div class="reveal-word hidden" id="test-reveal"></div>
             <div class="feedback" id="test-feedback"></div>
           </div>
-          <div class="card-actions">
-            <button class="btn btn-ghost btn-sm" id="test-restart">さいしょから</button>
-            <button class="btn btn-red" id="test-check">こたえあわせ</button>
+          <div class="card-actions" id="test-actions-check">
+            <button class="btn btn-red" id="test-reveal-btn">こたえをみる</button>
+          </div>
+          <div class="card-actions hidden" id="test-actions-grade">
+            <button class="btn btn-ghost" id="test-grade-ng">✕ ちがった</button>
+            <button class="btn btn-mint" id="test-grade-ok">◯ せいかい</button>
           </div>
         </div>
       </div>
@@ -329,9 +356,7 @@
     loadVoices();
     speechSynthesis.onvoiceschanged = loadVoices;
   }
-  function speak(text){
-    if (!("speechSynthesis" in window) || !text) return;
-    speechSynthesis.cancel();
+  function speakNow(text){
     const u = new SpeechSynthesisUtterance(text);
     const en = voices.find(v => /en-US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
     if (en) u.voice = en;
@@ -339,6 +364,51 @@
     u.rate = 0.85;
     speechSynthesis.speak(u);
   }
+  function speak(text){
+    if (!("speechSynthesis" in window) || !text) return;
+    // Cancelling and speaking back-to-back can silently drop audio on
+    // Android Chrome, so only cancel when something is actually queued,
+    // and give the engine a beat to reset before the next utterance.
+    if (speechSynthesis.speaking || speechSynthesis.pending){
+      speechSynthesis.cancel();
+      setTimeout(() => speakNow(text), 120);
+    } else {
+      speakNow(text);
+    }
+  }
+  // Some mobile browsers need one real user tap before speechSynthesis
+  // will produce audio at all — "warm up" the engine on first touch.
+  let speechWarmed = false;
+  function warmUpSpeech(){
+    if (speechWarmed || !("speechSynthesis" in window)) return;
+    speechWarmed = true;
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    speechSynthesis.speak(u);
+  }
+  document.addEventListener("pointerdown", warmUpSpeech, { once: true });
+
+  // If no English voice shows up after a moment, surface a hint instead
+  // of failing silently — most often this means the device's TTS voice
+  // pack (not the keyboard's language pack) hasn't been installed.
+  function checkTtsHealth(){
+    const warn = document.getElementById("tts-warn");
+    if (!warn) return;
+    if (!("speechSynthesis" in window)){
+      warn.textContent = "🔇 このブラウザは音声読み上げに対応していません。";
+      warn.classList.remove("hidden");
+      return;
+    }
+    setTimeout(() => {
+      loadVoices();
+      const hasEnglish = voices.some(v => /^en/i.test(v.lang));
+      if (!hasEnglish){
+        warn.textContent = "🔇 英語の音声データが見つかりません。設定 → システム → 言語と入力 → テキスト読み上げの出力 → Google音声合成エンジン →「英語(米国)」の音声データをダウンロードしてね(キーボードの言語パックとは別です)";
+        warn.classList.remove("hidden");
+      }
+    }, 1800);
+  }
+  checkTtsHealth();
 
   /* ---------- tab navigation ---------- */
   const tabs = document.querySelectorAll("nav.tabs button");
@@ -349,7 +419,10 @@
     const name = btn.dataset.screen;
     screens.forEach(s => s.classList.toggle("active", s.id === "screen-" + name));
     if (name === "practice") startPractice();
-    if (name === "test") { if(!testState.active) startTest(); }
+    if (name === "test") {
+      requestAnimationFrame(() => testPad.resize());
+      if (!testState.active) startTest();
+    }
   }));
   document.getElementById("screen-manage").classList.add("active");
 
@@ -427,18 +500,70 @@
 
   renderList();
 
-  /* ---------- normalize for checking ----------
-     strips stray characters some Android keyboards insert (trailing "." from
-     double-space autocorrect, smart quotes, extra spaces) so a correctly
-     spelled word isn't marked wrong. */
-  function norm(s){
-    return String(s || "")
-      .normalize("NFKC")
-      .toLowerCase()
-      .replace(/[\u2018\u2019]/g, "'")   // curly apostrophes -> straight
-      .replace(/[^a-z' -]/g, "")         // keep only letters, apostrophe, hyphen, space
-      .replace(/\s+/g, " ")
-      .trim();
+  /* ---------- handwriting pad (canvas) ---------- */
+  function makeWritingPad(heightPx, opts){
+    opts = opts || {};
+    const wrap = document.createElement("div");
+    wrap.className = "pad-wrap" + (opts.large ? " pad-lg" : "");
+    const canvas = document.createElement("canvas");
+    canvas.className = "pad-canvas";
+    canvas.style.height = heightPx + "px";
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "pad-clear";
+    clearBtn.setAttribute("aria-label", "けす");
+    clearBtn.textContent = "🧹";
+    wrap.appendChild(canvas);
+    wrap.appendChild(clearBtn);
+
+    let drawing = false, last = null;
+    function ctx(){ return canvas.getContext("2d"); }
+    function resize(){
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      const c = ctx();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.scale(dpr, dpr);
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.lineWidth = 4;
+      c.strokeStyle = "#C6432E";
+    }
+    function pos(e){
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    function start(e){
+      drawing = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+      last = pos(e);
+      e.preventDefault();
+    }
+    function move(e){
+      if (!drawing) return;
+      const p = pos(e);
+      const c = ctx();
+      c.beginPath();
+      c.moveTo(last.x, last.y);
+      c.lineTo(p.x, p.y);
+      c.stroke();
+      last = p;
+      e.preventDefault();
+    }
+    function stop(){ drawing = false; last = null; }
+    canvas.addEventListener("pointerdown", start);
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", stop);
+    canvas.addEventListener("pointercancel", stop);
+    canvas.addEventListener("pointerleave", stop);
+    function clear(){ const c = ctx(); c.clearRect(0, 0, canvas.width, canvas.height); }
+    clearBtn.addEventListener("click", clear);
+    requestAnimationFrame(resize);
+    window.addEventListener("resize", resize);
+    return { el: wrap, clear, resize };
   }
 
   /* ---------- practice mode ---------- */
@@ -452,8 +577,10 @@
     speakBtn: document.getElementById("practice-speak"),
     hintBtn: document.getElementById("practice-hint"),
     skipBtn: document.getElementById("practice-skip"),
+    clearBtn: document.getElementById("practice-clear"),
   };
   let practiceState = { order: [], idx: 0, current: null, hintShown: false };
+  let practicePads = [];
 
   function shuffle(arr){
     const a = arr.slice();
@@ -464,27 +591,15 @@
     return a;
   }
 
-  function buildPracticeLines(){
+  function buildPracticePads(){
     practiceEls.grid.innerHTML = "";
+    practicePads = [];
     for (let i = 0; i < PRACTICE_LINES; i++){
-      const inp = document.createElement("input");
-      inp.className = "pline";
-      inp.type = "text";
-      inp.autocomplete = "off";
-      inp.autocapitalize = "off";
-      inp.spellcheck = false;
-      inp.placeholder = String(i + 1);
-      practiceEls.grid.appendChild(inp);
+      const pad = makeWritingPad(108);
+      practiceEls.grid.appendChild(pad.el);
+      practicePads.push(pad);
     }
   }
-  practiceEls.grid.addEventListener("keydown", e => {
-    if (e.key === "Enter" && e.target.classList.contains("pline")){
-      const inputs = Array.from(practiceEls.grid.querySelectorAll(".pline"));
-      const idx = inputs.indexOf(e.target);
-      if (idx > -1 && idx < inputs.length - 1) inputs[idx + 1].focus();
-      else e.target.blur();
-    }
-  });
 
   function startPractice(){
     if (!words.length){
@@ -492,6 +607,7 @@
       practiceEls.ja.textContent = "";
       practiceEls.ghost.textContent = "";
       practiceEls.grid.innerHTML = "";
+      practicePads = [];
       return;
     }
     practiceState.order = shuffle(words);
@@ -508,7 +624,7 @@
     practiceEls.ja.textContent = w.ja || "";
     practiceEls.ghost.textContent = "";
     practiceEls.hintBtn.textContent = "ヒント";
-    buildPracticeLines();
+    buildPracticePads();
     speak(w.en);
   }
   practiceEls.hintBtn.addEventListener("click", () => {
@@ -519,17 +635,23 @@
   });
   practiceEls.skipBtn.addEventListener("click", () => { practiceState.idx++; showPracticeCard(); });
   practiceEls.speakBtn.addEventListener("click", () => practiceState.current && speak(practiceState.current.en));
+  practiceEls.clearBtn.addEventListener("click", () => practicePads.forEach(p => p.clear()));
 
   /* ---------- test mode (spaced repeat until mastered) ---------- */
   const testEls = {
     pill: document.getElementById("test-pill"),
     streak: document.getElementById("test-streak"),
     ja: document.getElementById("test-ja"),
-    input: document.getElementById("test-input"),
+    padSlot: document.getElementById("test-pad-slot"),
+    reveal: document.getElementById("test-reveal"),
     feedback: document.getElementById("test-feedback"),
     flash: document.getElementById("test-flash"),
     speakBtn: document.getElementById("test-speak"),
-    checkBtn: document.getElementById("test-check"),
+    revealBtn: document.getElementById("test-reveal-btn"),
+    gradeOkBtn: document.getElementById("test-grade-ok"),
+    gradeNgBtn: document.getElementById("test-grade-ng"),
+    checkGroup: document.getElementById("test-actions-check"),
+    gradeGroup: document.getElementById("test-actions-grade"),
     restartBtn: document.getElementById("test-restart"),
     live: document.getElementById("test-live"),
     done: document.getElementById("test-done"),
@@ -537,10 +659,17 @@
     againBtn: document.getElementById("test-again"),
   };
   let testState = { queue: [], progress: {}, total: 0, mastered: 0, streak: 0, current: null, active: false, misses: 0 };
+  const testPad = makeWritingPad(220, { large: true });
+  testEls.padSlot.appendChild(testPad.el);
 
   function startTest(){
     testEls.done.classList.add("hidden");
     testEls.live.classList.remove("hidden");
+    testPad.clear();
+    testEls.reveal.textContent = "";
+    testEls.reveal.classList.add("hidden");
+    testEls.checkGroup.classList.remove("hidden");
+    testEls.gradeGroup.classList.add("hidden");
     if (!words.length){
       testEls.pill.textContent = "0 / 0";
       testEls.ja.textContent = "";
@@ -585,26 +714,35 @@
     }
     testState.current = w;
     testEls.ja.textContent = w.ja || "";
-    testEls.input.value = "";
     testEls.feedback.textContent = "";
     testEls.feedback.className = "feedback";
-    testEls.input.focus();
+    testEls.reveal.textContent = "";
+    testEls.reveal.classList.add("hidden");
+    testEls.checkGroup.classList.remove("hidden");
+    testEls.gradeGroup.classList.add("hidden");
+    testPad.clear();
     speak(w.en);
   }
-  function checkTest(){
+  testEls.revealBtn.addEventListener("click", () => {
+    if (!testState.current || !testState.active) return;
+    testEls.reveal.textContent = testState.current.en;
+    testEls.reveal.classList.remove("hidden");
+    testEls.checkGroup.classList.add("hidden");
+    testEls.gradeGroup.classList.remove("hidden");
+  });
+  function gradeTest(correct){
     const w = testState.current;
     if (!w || !testState.active) return;
-    const ok = norm(testEls.input.value) === norm(w.en);
-    if (ok){
+    if (correct){
       testState.progress[w.id] = (testState.progress[w.id] || 0) + 1;
       testState.streak++;
-      testEls.feedback.textContent = "◯ せいかい！ (" + testState.progress[w.id] + "/" + settings.mastery + ")";
+      testEls.feedback.textContent = "◯ よくできました！ (" + testState.progress[w.id] + "/" + settings.mastery + ")";
       testEls.feedback.className = "feedback ok";
     } else {
       testState.progress[w.id] = 0;
       testState.streak = 0;
       testState.misses++;
-      testEls.feedback.textContent = "✕ 正解は " + w.en + "・もう一度あとで出るよ";
+      testEls.feedback.textContent = "また あとで でるよ";
       testEls.feedback.className = "feedback ng";
       testEls.flash.classList.add("shake");
       setTimeout(() => testEls.flash.classList.remove("shake"), 300);
@@ -612,7 +750,9 @@
       const reinsertAt = Math.min(testState.queue.length, 2);
       testState.queue.splice(reinsertAt, 0, w);
     }
-    setTimeout(nextTestCard, ok ? 550 : 1400);
+    testEls.checkGroup.classList.add("hidden");
+    testEls.gradeGroup.classList.add("hidden");
+    setTimeout(nextTestCard, correct ? 650 : 1200);
   }
   function finishTest(){
     testState.active = false;
@@ -620,11 +760,11 @@
     testEls.done.classList.remove("hidden");
     testEls.doneMsg.textContent = testState.total + "語 マスター・まちがえた回数 " + testState.misses + "回";
   }
-  testEls.checkBtn.addEventListener("click", checkTest);
+  testEls.gradeOkBtn.addEventListener("click", () => gradeTest(true));
+  testEls.gradeNgBtn.addEventListener("click", () => gradeTest(false));
   testEls.restartBtn.addEventListener("click", startTest);
   testEls.againBtn.addEventListener("click", startTest);
   testEls.speakBtn.addEventListener("click", () => testState.current && speak(testState.current.en));
-  testEls.input.addEventListener("keydown", e => { if (e.key === "Enter") checkTest(); });
 
 })();
 </script>
