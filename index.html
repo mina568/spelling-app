@@ -194,12 +194,14 @@
 
   /* ---- handwriting pads ---- */
   .practice-grid{
-    display:flex; flex-direction:column; align-items:center; gap:16px;
-    margin-top:16px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    margin-top:10px;
+    flex:1; min-height:120px;
   }
   .pad-wrap{
     position:relative; width:94%; max-width:400px; margin:0 auto;
   }
+  .practice-grid .pad-wrap{ flex:1; min-height:0; }
   .pad-wrap.pad-lg{ max-width:460px; }
   .pad-canvas{
     width:100%; display:block; touch-action:none; border-radius:16px;
@@ -212,12 +214,31 @@
     background-size: 100% 1px, 100% 1px, 100% 1px;
     background-position: 0 33%, 0 66%, 0 99%;
   }
+  .practice-grid .pad-canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .pad-clear{
     position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%;
     border:none; background:rgba(255,255,255,.9); box-shadow:0 2px 6px rgba(36,52,74,.18);
     font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
   .pad-slot{ margin-top:14px; }
+
+  /* れんしゅう画面は縦にはみ出さず、余白いっぱいに5枠が伸び縮みして収まる */
+  #screen-practice.active{
+    display:flex; flex-direction:column; height:100%; min-height:0;
+  }
+  #screen-practice .pager,
+  #screen-practice .stagebar{ flex:none; }
+  #screen-practice .card{
+    flex:1; min-height:0; display:flex; flex-direction:column;
+    padding-top:14px; padding-bottom:14px;
+  }
+  #screen-practice .flash{
+    flex:1; min-height:0; display:flex; flex-direction:column;
+  }
+  #screen-practice .speaker,
+  #screen-practice .ja-hint,
+  #screen-practice .ghost-word{ flex:none; }
+  #screen-practice .card-actions{ flex:none; margin-top:10px; }
 
   .feedback{min-height:26px; margin-top:12px; font-weight:700; font-size:14px;}
   .feedback.ok{color:var(--mint);}
@@ -381,6 +402,7 @@
     return !!(window.fully && typeof window.fully.textToSpeech === "function");
   }
   let currentSpokenText = null;
+  let firstSpeakDone = false;
   function speakNow(text){
     const u = new SpeechSynthesisUtterance(text);
     const en = voices.find(v => /en-US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
@@ -400,19 +422,28 @@
     // restarting (avoids an extra cancel/re-init round trip).
     if (speechSynthesis.speaking && currentSpokenText === text) return;
     if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
-    speakNow(text);
+    if (!firstSpeakDone){
+      // The very first utterance after a cold start (e.g. opening the
+      // installed home-screen icon fresh, rather than an already-warm
+      // Chrome tab) can need real time for Android to bind the TTS
+      // engine — give it more headroom just this once.
+      firstSpeakDone = true;
+      setTimeout(() => speakNow(text), 350);
+    } else {
+      // Cancelling and speaking back-to-back can otherwise silently
+      // drop audio, so give the engine a brief beat to reset.
+      setTimeout(() => speakNow(text), 80);
+    }
   }
-  // Some mobile browsers need one real user tap before speechSynthesis
-  // will produce audio at all — "warm up" the engine on first touch,
-  // then keep it lightly "awake" so later presses don't pay Android's
-  // TTS engine cold-start cost.
-  let speechWarmed = false;
-  function warmUpSpeech(){
-    if (speechWarmed || hasFullyTts() || !("speechSynthesis" in window)) return;
-    speechWarmed = true;
-    const u = new SpeechSynthesisUtterance(" ");
-    u.volume = 0;
-    speechSynthesis.speak(u);
+  // Keep the TTS engine lightly "awake" in the background so presses
+  // don't pay Android's engine cold-start cost. We deliberately do NOT
+  // fire a synchronous "unlock" utterance on the very first tap anymore —
+  // that raced against the real word being spoken on that same tap
+  // (especially right after a cold start) and could cancel it into silence.
+  let speechWarmLoopStarted = false;
+  function startSpeechWarmLoop(){
+    if (speechWarmLoopStarted || hasFullyTts() || !("speechSynthesis" in window)) return;
+    speechWarmLoopStarted = true;
     setInterval(() => {
       if (!speechSynthesis.speaking && !speechSynthesis.pending){
         const ping = new SpeechSynthesisUtterance(" ");
@@ -421,7 +452,7 @@
       }
     }, 12000);
   }
-  document.addEventListener("pointerdown", warmUpSpeech, { once: true });
+  document.addEventListener("pointerdown", startSpeechWarmLoop, { once: true });
 
   // If neither Fully's TTS bridge nor the Web Speech API is usable,
   // surface a hint instead of failing silently.
@@ -543,7 +574,10 @@
     wrap.className = "pad-wrap" + (opts.large ? " pad-lg" : "");
     const canvas = document.createElement("canvas");
     canvas.className = "pad-canvas";
-    canvas.style.height = heightPx + "px";
+    // When heightPx is omitted, the canvas fills its wrap via CSS
+    // (used for the practice pads, which flex-stretch to fit the
+    // screen exactly instead of using a fixed pixel height).
+    if (heightPx) canvas.style.height = heightPx + "px";
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
     clearBtn.className = "pad-clear";
@@ -656,7 +690,7 @@
     practiceEls.grid.innerHTML = "";
     practicePads = [];
     for (let i = 0; i < PRACTICE_LINES; i++){
-      const pad = makeWritingPad(108);
+      const pad = makeWritingPad(); // no fixed height — fills its share of the screen
       practiceEls.grid.appendChild(pad.el);
       practicePads.push(pad);
     }
