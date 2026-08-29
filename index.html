@@ -154,6 +154,15 @@
 
   /* ---- practice / test flash card ---- */
   .stagebar{display:flex; align-items:center; justify-content:space-between; margin-top:6px;}
+  .pager{
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    margin-top:16px;
+  }
+  .pager-label{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-soft); font-weight:700;
+    min-width:92px; text-align:center;
+  }
+  .pager button:disabled{opacity:.35; pointer-events:none;}
   .progress-pill{
     font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--paper-dim);
     padding:5px 10px; border-radius:20px; color:var(--ink-soft);
@@ -270,6 +279,11 @@
 
     <!-- ============ 練習モード ============ -->
     <section class="screen" id="screen-practice">
+      <div class="pager" id="practice-pager">
+        <button class="btn btn-ghost btn-sm" id="practice-page-prev">◀</button>
+        <span class="pager-label" id="practice-page-label">ページ 1 / 1</span>
+        <button class="btn btn-ghost btn-sm" id="practice-page-next">▶</button>
+      </div>
       <div class="stagebar">
         <span class="progress-pill" id="practice-pill">0 / 0</span>
       </div>
@@ -291,6 +305,11 @@
     <!-- ============ テストモード ============ -->
     <section class="screen" id="screen-test">
       <div id="test-live">
+        <div class="pager" id="test-pager">
+          <button class="btn btn-ghost btn-sm" id="test-page-prev">◀</button>
+          <span class="pager-label" id="test-page-label">ページ 1 / 1</span>
+          <button class="btn btn-ghost btn-sm" id="test-page-next">▶</button>
+        </div>
         <div class="stagebar">
           <span class="progress-pill" id="test-pill">0 / 0</span>
           <span class="streak" id="test-streak">streak 0</span>
@@ -366,12 +385,14 @@
   function hasFullyTts(){
     return !!(window.fully && typeof window.fully.textToSpeech === "function");
   }
+  let currentSpokenText = null;
   function speakNow(text){
     const u = new SpeechSynthesisUtterance(text);
     const en = voices.find(v => /en-US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
     if (en) u.voice = en;
     u.lang = en ? en.lang : "en-US";
     u.rate = 0.85;
+    currentSpokenText = text;
     speechSynthesis.speak(u);
   }
   function speak(text){
@@ -380,18 +401,16 @@
       try { window.fully.textToSpeech(text); return; } catch (e){ /* fall through */ }
     }
     if (!("speechSynthesis" in window)) return;
-    // Cancelling and speaking back-to-back can silently drop audio on
-    // Android Chrome, so only cancel when something is actually queued,
-    // and give the engine a beat to reset before the next utterance.
-    if (speechSynthesis.speaking || speechSynthesis.pending){
-      speechSynthesis.cancel();
-      setTimeout(() => speakNow(text), 120);
-    } else {
-      speakNow(text);
-    }
+    // Already saying this exact word — let it finish instead of
+    // restarting (avoids an extra cancel/re-init round trip).
+    if (speechSynthesis.speaking && currentSpokenText === text) return;
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    speakNow(text);
   }
   // Some mobile browsers need one real user tap before speechSynthesis
-  // will produce audio at all — "warm up" the engine on first touch.
+  // will produce audio at all — "warm up" the engine on first touch,
+  // then keep it lightly "awake" so later presses don't pay Android's
+  // TTS engine cold-start cost.
   let speechWarmed = false;
   function warmUpSpeech(){
     if (speechWarmed || hasFullyTts() || !("speechSynthesis" in window)) return;
@@ -399,6 +418,13 @@
     const u = new SpeechSynthesisUtterance(" ");
     u.volume = 0;
     speechSynthesis.speak(u);
+    setInterval(() => {
+      if (!speechSynthesis.speaking && !speechSynthesis.pending){
+        const ping = new SpeechSynthesisUtterance(" ");
+        ping.volume = 0;
+        speechSynthesis.speak(ping);
+      }
+    }, 12000);
   }
   document.addEventListener("pointerdown", warmUpSpeech, { once: true });
 
@@ -581,6 +607,15 @@
     return { el: wrap, clear, resize };
   }
 
+  /* ---------- pagination (5 words per page) ---------- */
+  const PAGE_SIZE = 5;
+  function getPages(){
+    const pages = [];
+    for (let i = 0; i < words.length; i += PAGE_SIZE) pages.push(words.slice(i, i + PAGE_SIZE));
+    if (!pages.length) pages.push([]);
+    return pages;
+  }
+
   /* ---------- practice mode ---------- */
   const PRACTICE_LINES = 5;
   const practiceEls = {
@@ -593,8 +628,12 @@
     hintBtn: document.getElementById("practice-hint"),
     skipBtn: document.getElementById("practice-skip"),
     clearBtn: document.getElementById("practice-clear"),
+    pagePrev: document.getElementById("practice-page-prev"),
+    pageNext: document.getElementById("practice-page-next"),
+    pageLabel: document.getElementById("practice-page-label"),
   };
-  let practiceState = { order: [], idx: 0, current: null, hintShown: false };
+  let practiceState = { order: [], idx: 0, current: null, hintShown: false, pageWords: [] };
+  let practicePageIndex = 0;
   let practicePads = [];
 
   function shuffle(arr){
@@ -617,7 +656,15 @@
   }
 
   function startPractice(){
-    if (!words.length){
+    const pages = getPages();
+    if (practicePageIndex >= pages.length) practicePageIndex = pages.length - 1;
+    if (practicePageIndex < 0) practicePageIndex = 0;
+    practiceEls.pageLabel.textContent = "ページ " + (practicePageIndex + 1) + " / " + pages.length;
+    practiceEls.pagePrev.disabled = practicePageIndex <= 0;
+    practiceEls.pageNext.disabled = practicePageIndex >= pages.length - 1;
+    const pageWords = pages[practicePageIndex] || [];
+    practiceState.pageWords = pageWords;
+    if (!pageWords.length){
       practiceEls.pill.textContent = "0 / 0";
       practiceEls.ja.textContent = "";
       practiceEls.ghost.textContent = "";
@@ -625,12 +672,12 @@
       practicePads = [];
       return;
     }
-    practiceState.order = shuffle(words);
+    practiceState.order = shuffle(pageWords);
     practiceState.idx = 0;
     showPracticeCard();
   }
   function showPracticeCard(){
-    if (practiceState.idx >= practiceState.order.length) practiceState.order = shuffle(words);
+    if (practiceState.idx >= practiceState.order.length) practiceState.order = shuffle(practiceState.pageWords);
     if (practiceState.idx >= practiceState.order.length) practiceState.idx = 0;
     const w = practiceState.order[practiceState.idx];
     practiceState.current = w;
@@ -651,6 +698,13 @@
   practiceEls.skipBtn.addEventListener("click", () => { practiceState.idx++; showPracticeCard(); });
   practiceEls.speakBtn.addEventListener("click", () => practiceState.current && speak(practiceState.current.en));
   practiceEls.clearBtn.addEventListener("click", () => practicePads.forEach(p => p.clear()));
+  practiceEls.pagePrev.addEventListener("click", () => {
+    if (practicePageIndex > 0){ practicePageIndex--; startPractice(); }
+  });
+  practiceEls.pageNext.addEventListener("click", () => {
+    const pages = getPages();
+    if (practicePageIndex < pages.length - 1){ practicePageIndex++; startPractice(); }
+  });
 
   /* ---------- test mode (spaced repeat until mastered) ---------- */
   const testEls = {
@@ -672,8 +726,12 @@
     done: document.getElementById("test-done"),
     doneMsg: document.getElementById("test-done-msg"),
     againBtn: document.getElementById("test-again"),
+    pagePrev: document.getElementById("test-page-prev"),
+    pageNext: document.getElementById("test-page-next"),
+    pageLabel: document.getElementById("test-page-label"),
   };
-  let testState = { queue: [], progress: {}, total: 0, mastered: 0, streak: 0, current: null, active: false, misses: 0 };
+  let testState = { queue: [], progress: {}, total: 0, mastered: 0, streak: 0, current: null, active: false, misses: 0, pageWords: [] };
+  let testPageIndex = 0;
   const testPad = makeWritingPad(220, { large: true });
   testEls.padSlot.appendChild(testPad.el);
 
@@ -685,7 +743,15 @@
     testEls.reveal.classList.add("hidden");
     testEls.checkGroup.classList.remove("hidden");
     testEls.gradeGroup.classList.add("hidden");
-    if (!words.length){
+    const pages = getPages();
+    if (testPageIndex >= pages.length) testPageIndex = pages.length - 1;
+    if (testPageIndex < 0) testPageIndex = 0;
+    testEls.pageLabel.textContent = "ページ " + (testPageIndex + 1) + " / " + pages.length;
+    testEls.pagePrev.disabled = testPageIndex <= 0;
+    testEls.pageNext.disabled = testPageIndex >= pages.length - 1;
+    const pageWords = pages[testPageIndex] || [];
+    testState.pageWords = pageWords;
+    if (!pageWords.length){
       testEls.pill.textContent = "0 / 0";
       testEls.ja.textContent = "";
       testEls.feedback.textContent = "先に単語帳から単語を登録してね";
@@ -693,16 +759,23 @@
       testState.active = false;
       return;
     }
-    testState.queue = shuffle(words).map(w => w);
+    testState.queue = shuffle(pageWords);
     testState.progress = {};
-    words.forEach(w => testState.progress[w.id] = 0);
-    testState.total = words.length;
+    pageWords.forEach(w => testState.progress[w.id] = 0);
+    testState.total = pageWords.length;
     testState.mastered = 0;
     testState.streak = 0;
     testState.misses = 0;
     testState.active = true;
     nextTestCard();
   }
+  testEls.pagePrev.addEventListener("click", () => {
+    if (testPageIndex > 0){ testPageIndex--; startTest(); }
+  });
+  testEls.pageNext.addEventListener("click", () => {
+    const pages = getPages();
+    if (testPageIndex < pages.length - 1){ testPageIndex++; startTest(); }
+  });
   function masteredCount(){
     return Object.values(testState.progress).filter(v => v >= settings.mastery).length;
   }
@@ -723,7 +796,7 @@
     }
     if (!w){
       // refill queue, weighting words that still need more correct answers
-      const remaining = words.filter(x => testState.progress[x.id] < settings.mastery);
+      const remaining = testState.pageWords.filter(x => testState.progress[x.id] < settings.mastery);
       testState.queue = shuffle(remaining.concat(remaining));
       w = testState.queue.shift();
     }
