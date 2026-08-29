@@ -1,440 +1,632 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="theme-color" content="#2B5FA8" />
-<title>スペリング特訓ボード</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>えいたんカード</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#24344A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700;900&family=Architects+Daughter&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#EFF3F7; --frame:#232B36; --blue:#2B5FA8; --red:#9C3B4A;
-    --green:#4F8F5B; --ink:#1E2530; --muted:#6B7785; --line:#D7E0E8;
+    --paper:#FAF6EC;
+    --paper-dim:#F2ECDC;
+    --ink:#24344A;
+    --ink-soft:#5B6E85;
+    --red:#C6432E;
+    --red-soft:#E7C9C1;
+    --mint:#5C9A80;
+    --mint-soft:#D8E8DF;
+    --line:#CBBE9C;
+    --gold:#D9A441;
+    --shadow: 0 10px 30px rgba(36,52,74,.18);
+    --radius: 18px;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
   body{
-    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:#dbe3ea; color:var(--ink); padding:10px;
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(217,164,65,.10), transparent 40%),
+      radial-gradient(circle at 90% 85%, rgba(92,154,128,.12), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Zen Maru Gothic','Kosugi Maru',sans-serif;
+    overflow:hidden;
   }
-  .board{
-    max-width:520px; margin:0 auto; border:9px solid var(--frame); border-radius:14px;
-    background: repeating-linear-gradient(var(--paper), var(--paper) 26px, var(--line) 27px), var(--paper);
-    padding:16px;
+  #app{
+    display:flex; flex-direction:column;
+    height:100vh; height:100dvh;
+    max-width:720px; margin:0 auto;
+    position:relative;
   }
-  h1{font-family:'Kalam',cursive; color:var(--blue); font-size:24px; margin:0;}
-  .sub{color:var(--muted); font-size:12px; margin:2px 0 14px;}
-  .topbar{display:flex; justify-content:space-between; align-items:flex-start;}
-  .iconbtn{border:1.5px solid var(--line); background:white; border-radius:999px; width:32px; height:32px; font-size:14px; cursor:pointer;}
-  .progress{display:flex; gap:2px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px;}
-  .pdot{flex-shrink:0; width:20px; height:20px; border-radius:999px; font-family:'IBM Plex Mono',monospace; font-size:10px;
-    display:flex; align-items:center; justify-content:center; border:2px solid var(--line); background:white; color:var(--muted);}
-  .pdot.done{background:var(--green); border-color:var(--green); color:white;}
-  .doneCount{font-size:11px; color:var(--muted); margin-bottom:12px;}
-  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:12px;}
-  .tab{flex-shrink:0; padding:6px 10px; border-radius:8px; font-size:12px; font-weight:600; border:1.5px solid var(--line);
-    background:white; color:var(--ink); white-space:nowrap; cursor:pointer;}
-  .tab.active{background:var(--blue); border-color:var(--blue); color:white;}
-  .card{background:white; border:2px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px;}
-  .card.allDone{border-color:var(--green);}
-  .wtop{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
-  .jaBtn{font-size:11px; color:var(--muted); background:none; border:none; text-decoration:underline; cursor:pointer;}
-  .stages{display:flex; gap:6px;}
-  .stage{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px;
-    border-radius:8px; border:1.5px solid var(--line); background:none; cursor:pointer; font-size:15px;}
-  .stage span{font-size:10px; color:var(--muted);}
-  .stage.active{border-color:var(--blue); background:rgba(43,95,168,0.10);}
-  .stage.active span{color:var(--blue); font-weight:700;}
-  .cardBody{margin-top:10px;}
-  .wordDisplay{font-family:'Kalam',cursive; font-size:28px; text-align:center; padding:16px 0; color:var(--ink);}
-  .wordDisplay.covered{color:var(--muted); letter-spacing:5px; font-family:'IBM Plex Mono',monospace; font-size:20px;}
-  .writeArea{display:flex; flex-direction:column; gap:8px; align-items:center;}
-  .padCanvas{width:100%; height:130px; background:white; border:1.5px dashed var(--line); border-radius:8px; touch-action:none;}
-  .clearBtn{font-size:11px; color:var(--muted); background:none; border:1px solid var(--line); border-radius:6px; padding:5px 12px; cursor:pointer;}
-  .checkArea{text-align:center;}
-  .answerText{font-family:'Kalam',cursive; font-size:20px; margin:4px 0 6px;}
-  .gradedNote{font-size:13px; font-weight:700; margin:0;}
-  .idleHint{font-size:12px; color:var(--muted); text-align:center; padding:16px 0;}
-  .testBox{background:white; border:2px solid var(--line); border-radius:12px; padding:20px; text-align:center;}
-  .startBtn{background:var(--blue); color:white; border:none; padding:10px 18px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;}
-  .qword{font-family:'Kalam',cursive; font-size:36px; color:var(--blue); margin:6px 0;}
-  .qcount{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted);}
-  .qhint{font-size:12px; color:var(--muted); margin-bottom:18px;}
-  .answerRow{display:flex; justify-content:center; gap:16px;}
-  .ansBtn{width:60px; height:60px; border-radius:999px; border:none; color:white; font-size:24px; cursor:pointer;}
-  .ok{background:var(--green);} .ng{background:var(--red);}
-  .weakSection{border-top:1.5px dashed var(--line); margin-top:16px; padding-top:12px;}
-  .weakTitle{font-family:'Kalam',cursive; color:var(--red); font-size:16px; margin:0 0 8px;}
-  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
-  .tag{font-size:11px; padding:4px 8px; border-radius:999px; border:1px solid var(--red); color:var(--red); background:rgba(156,59,74,0.08);}
-  .tag.mastered{border-color:var(--green); color:var(--green); background:none; text-decoration:line-through;}
-  .footerRow{text-align:right; margin-top:14px; font-size:11px; color:var(--muted);}
-  .footerRow button{background:none; border:none; color:inherit; text-decoration:underline; cursor:pointer; font-size:11px;}
-  .infoBox{background:white; border:1.5px dashed var(--line); border-radius:8px; padding:10px; font-size:12px; line-height:1.6; margin-bottom:12px;}
-  .manager{background:white; border:2px solid var(--line); border-radius:12px; padding:14px;}
-  .mrow{display:flex; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;}
-  .mrow input[type=text]{flex:1; border:1px solid var(--line); border-radius:6px; padding:5px 6px; font-size:12px; min-width:0;}
-  .mrow select{border:1px solid var(--line); border-radius:6px; font-size:12px; padding:5px 2px;}
-  .delBtn{color:var(--red); border:none; background:none; font-size:16px; cursor:pointer;}
-  .addForm{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:10px; border-top:1.5px dashed var(--line);}
-  .addForm input[type=text]{flex:1; min-width:80px; border:1px solid var(--line); border-radius:6px; padding:6px; font-size:12px;}
-  .addForm select{border:1px solid var(--line); border-radius:6px; font-size:12px;}
-  .addBtn{background:var(--blue); color:white; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;}
-  .managerTitle{font-family:'Kalam',cursive; font-size:18px; color:var(--blue); margin:0 0 10px;}
+  header.top{
+    padding:18px 20px 10px;
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  header.top h1{
+    font-family:'Kosugi Maru',sans-serif;
+    font-size:22px; margin:0; color:var(--ink);
+    letter-spacing:.5px;
+  }
+  header.top h1 .dot{color:var(--red);}
+  header.top .sub{font-size:11px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace;}
+
+  main{flex:1; overflow-y:auto; padding:6px 18px 18px;}
+  section.screen{display:none; animation:fadeUp .35s ease;}
+  section.screen.active{display:block;}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+
+  nav.tabs{
+    display:flex; border-top:1px solid var(--line);
+    background:var(--paper-dim);
+  }
+  nav.tabs button{
+    flex:1; border:none; background:transparent; padding:12px 4px 14px;
+    font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:12.5px;
+    color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; gap:3px;
+    cursor:pointer;
+  }
+  nav.tabs button .icon{font-size:19px;}
+  nav.tabs button.active{color:var(--red);}
+  nav.tabs button.active .icon{transform:translateY(-2px);}
+  nav.tabs button:focus-visible, button:focus-visible, input:focus-visible{outline:3px solid var(--gold); outline-offset:2px;}
+
+  /* ---- shared card ---- */
+  .card{
+    background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
+    position:relative; padding:22px 20px 20px; margin-top:16px;
+    border:1px solid rgba(36,52,74,.06);
+  }
+  .card::before{
+    content:"";
+    position:absolute; top:-9px; left:24px; right:24px; height:18px;
+    background-image: radial-gradient(circle, var(--paper) 6px, transparent 6.5px);
+    background-size:26px 18px; background-repeat:repeat-x; background-position:0 0;
+  }
+  .card::after{
+    content:"";
+    position:absolute; top:-9px; left:24px; right:24px; height:18px;
+    background-image: radial-gradient(circle, rgba(36,52,74,.10) 6px, transparent 7px);
+    background-size:26px 18px; background-repeat:repeat-x; background-position:0 0;
+    -webkit-mask-image: linear-gradient(90deg, black 1px, transparent 1px);
+    mask-image: linear-gradient(90deg, black 1px, transparent 1px);
+    -webkit-mask-size: 26px 18px; mask-size:26px 18px;
+    opacity:0;
+  }
+
+  h2.section-title{font-size:15px; margin:18px 0 8px; color:var(--ink-soft); font-weight:700;}
+
+  /* ---- manage screen ---- */
+  .addrow{display:flex; gap:8px; margin-top:10px;}
+  .addrow input{
+    flex:1; padding:12px 12px; border-radius:12px; border:2px solid var(--line);
+    background:var(--paper); font-family:'Zen Maru Gothic',sans-serif; font-size:15px; color:var(--ink);
+  }
+  .addrow input#in-en{font-family:'Architects Daughter',cursive; font-size:17px;}
+  .btn{
+    border:none; border-radius:12px; padding:11px 16px; font-weight:700; cursor:pointer;
+    font-family:'Zen Maru Gothic',sans-serif; font-size:14px;
+  }
+  .btn-primary{background:var(--ink); color:#fff;}
+  .btn-primary:active{transform:scale(.97);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:2px solid var(--line);}
+  .btn-red{background:var(--red); color:#fff;}
+  .btn-mint{background:var(--mint); color:#fff;}
+  .btn-sm{padding:7px 10px; font-size:12px; border-radius:9px;}
+
+  ul.wordlist{list-style:none; margin:12px 0 0; padding:0;}
+  ul.wordlist li{
+    display:flex; align-items:center; gap:10px;
+    background:#fff; border:1px solid rgba(36,52,74,.08); border-radius:12px;
+    padding:10px 12px; margin-bottom:8px; box-shadow:0 2px 6px rgba(36,52,74,.05);
+  }
+  ul.wordlist li .en{font-family:'Architects Daughter',cursive; font-size:18px; min-width:0; flex:0 1 auto;}
+  ul.wordlist li .ja{color:var(--ink-soft); font-size:13px; flex:1;}
+  ul.wordlist li .actions{display:flex; gap:6px;}
+  .empty{
+    text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13px;
+    border:2px dashed var(--line); border-radius:14px; margin-top:14px;
+  }
+  .settings-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--paper-dim); border-radius:12px; padding:10px 14px; margin-top:14px;
+    font-size:13px; color:var(--ink-soft); font-weight:700;
+  }
+  .switch{position:relative; width:42px; height:24px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .switch span{
+    position:absolute; inset:0; background:var(--line); border-radius:20px; transition:.2s; cursor:pointer;
+  }
+  .switch span::before{
+    content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  .switch input:checked + span{background:var(--mint);}
+  .switch input:checked + span::before{transform:translateX(18px);}
+
+  /* ---- practice / test flash card ---- */
+  .stagebar{display:flex; align-items:center; justify-content:space-between; margin-top:6px;}
+  .progress-pill{
+    font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--paper-dim);
+    padding:5px 10px; border-radius:20px; color:var(--ink-soft);
+  }
+  .streak{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold); font-weight:700;}
+
+  .flash{padding-top:30px; padding-bottom:24px; min-height:170px; text-align:center; perspective:800px;}
+  .flash-inner{transition:transform .35s; transform-style:preserve-3d;}
+  .flash.flip .flash-inner{transform:rotateY(360deg);}
+
+  .speaker{
+    width:52px; height:52px; border-radius:50%; border:none; background:var(--ink); color:#fff;
+    font-size:22px; cursor:pointer; box-shadow:0 4px 10px rgba(36,52,74,.25); margin-bottom:6px;
+  }
+  .speaker:active{transform:scale(.94);}
+  .ja-hint{color:var(--ink-soft); font-size:14px; margin:4px 0 14px; min-height:18px;}
+
+  .ghost-word{
+    font-family:'Architects Daughter',cursive; font-size:28px; letter-spacing:3px;
+    color:rgba(36,52,74,.22); margin:4px 0 2px; min-height:34px; user-select:none;
+  }
+  .ruled{
+    border:none; border-bottom:3px solid var(--ink); background:transparent;
+    width:90%; max-width:340px; text-align:center; font-family:'Architects Daughter',cursive;
+    font-size:28px; color:var(--red); padding:6px 4px; margin-top:6px;
+  }
+  .ruled::placeholder{color:transparent;}
+  .practice-grid{
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    margin-top:16px;
+  }
+  .pline{
+    border:none; border-bottom:3px solid var(--ink); background:transparent;
+    width:90%; max-width:340px; text-align:center; font-family:'Architects Daughter',cursive;
+    font-size:26px; color:var(--red); padding:6px 4px;
+  }
+  .pline::placeholder{color:rgba(36,52,74,.35); font-family:'JetBrains Mono',monospace; font-size:12px;}
+
+  .feedback{min-height:26px; margin-top:12px; font-weight:700; font-size:14px;}
+  .feedback.ok{color:var(--mint);}
+  .feedback.ng{color:var(--red);}
+  .shake{animation:shake .3s;}
+  @keyframes shake{
+    10%,90%{transform:translateX(-3px)} 20%,80%{transform:translateX(4px)}
+    30%,50%,70%{transform:translateX(-6px)} 40%,60%{transform:translateX(6px)}
+  }
+
+  .card-actions{display:flex; gap:10px; justify-content:center; margin-top:16px;}
+
+  .done-screen{text-align:center; padding:40px 10px;}
+  .done-screen .big{font-size:48px;}
+  .done-screen h3{font-family:'Kosugi Maru',sans-serif; margin:8px 0 4px;}
+
+  select{
+    font-family:'Zen Maru Gothic',sans-serif; border-radius:10px; border:2px solid var(--line);
+    padding:6px 8px; background:var(--paper); color:var(--ink); font-size:12px;
+  }
+  .hidden{display:none !important;}
 </style>
 </head>
 <body>
-<div class="board" id="board"></div>
+<div id="app">
+  <header class="top">
+    <h1>えいたん<span class="dot">・</span>カード</h1>
+    <div class="sub" id="wordcount">0 words</div>
+  </header>
+
+  <main>
+    <!-- ============ 単語管理 ============ -->
+    <section class="screen" id="screen-manage">
+      <h2 class="section-title">単語をとうろく</h2>
+      <div class="addrow">
+        <input id="in-en" type="text" placeholder="英単語 (apple)" autocomplete="off">
+      </div>
+      <div class="addrow">
+        <input id="in-ja" type="text" placeholder="意味・ヒント (りんご) ※省略可" autocomplete="off">
+        <button class="btn btn-primary" id="btn-add">追加</button>
+      </div>
+
+      <h2 class="section-title">単語リスト</h2>
+      <ul class="wordlist" id="wordlist"></ul>
+      <div class="empty" id="empty-msg">まだ単語がありません。上のフォームから追加してね。</div>
+
+      <div class="settings-row">
+        <span>テストの合格ライン（連続正解）</span>
+        <select id="mastery-select">
+          <option value="1">1回</option>
+          <option value="2" selected>2回</option>
+          <option value="3">3回</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- ============ 練習モード ============ -->
+    <section class="screen" id="screen-practice">
+      <div class="stagebar">
+        <span class="progress-pill" id="practice-pill">0 / 0</span>
+      </div>
+      <div class="card">
+        <div class="flash" id="practice-flash">
+          <button class="speaker" id="practice-speak">🔊</button>
+          <div class="ja-hint" id="practice-ja"></div>
+          <div class="ghost-word" id="practice-ghost"></div>
+          <div class="practice-grid" id="practice-grid"></div>
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-ghost" id="practice-hint">ヒント</button>
+          <button class="btn btn-mint" id="practice-skip">つぎの単語 ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ テストモード ============ -->
+    <section class="screen" id="screen-test">
+      <div id="test-live">
+        <div class="stagebar">
+          <span class="progress-pill" id="test-pill">0 / 0</span>
+          <span class="streak" id="test-streak">streak 0</span>
+        </div>
+        <div class="card">
+          <div class="flash" id="test-flash">
+            <button class="speaker" id="test-speak">🔊</button>
+            <div class="ja-hint" id="test-ja"></div>
+            <input class="ruled" id="test-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="かいてみよう">
+            <div class="feedback" id="test-feedback"></div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" id="test-restart">さいしょから</button>
+            <button class="btn btn-red" id="test-check">こたえあわせ</button>
+          </div>
+        </div>
+      </div>
+      <div class="done-screen hidden" id="test-done">
+        <div class="big">🎉</div>
+        <h3>ぜんぶ せいかい！</h3>
+        <p id="test-done-msg" style="color:var(--ink-soft); font-size:13px;"></p>
+        <button class="btn btn-primary" id="test-again">もういちど テストする</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-screen="manage" class="active"><span class="icon">📇</span>単語帳</button>
+    <button data-screen="practice"><span class="icon">✏️</span>れんしゅう</button>
+    <button data-screen="test"><span class="icon">🎯</span>テスト</button>
+  </nav>
+</div>
 
 <script>
-const STORAGE_KEY = 'spelling-app-v2';
+(function(){
+  "use strict";
+  const STORAGE_KEY = "eitan_words_v1";
+  const SETTINGS_KEY = "eitan_settings_v1";
 
-const DEFAULT_WORDS = [
-  {id:1,en:'family',ja:'家族',introDay:1},
-  {id:2,en:'going',ja:'行く',introDay:1},
-  {id:3,en:'ice cream',ja:'アイスクリーム',introDay:1},
-  {id:4,en:'melt',ja:'とける',introDay:1},
-  {id:5,en:'brother',ja:'兄弟',introDay:1},
-  {id:6,en:'sister',ja:'姉妹',introDay:2},
-  {id:7,en:'excited',ja:'わくわくする',introDay:2},
-  {id:8,en:'trouble',ja:'困りごと',introDay:2},
-  {id:9,en:'pudding',ja:'プディング',introDay:2},
-  {id:10,en:'taste',ja:'味・味わう',introDay:2},
-  {id:11,en:'peas',ja:'えんどう豆',introDay:3},
-  {id:12,en:'equipment',ja:'道具',introDay:3},
-  {id:13,en:'ingredients',ja:'材料',introDay:3},
-  {id:14,en:'instructions',ja:'説明・手順',introDay:3},
-  {id:15,en:'oil',ja:'油',introDay:3},
-  {id:16,en:'seashells',ja:'貝殻',introDay:4},
-  {id:17,en:'splash',ja:'ばしゃっとはねる',introDay:4},
-  {id:18,en:'whisper',ja:'ささやく',introDay:4},
-  {id:19,en:'rhyme',ja:'韻をふむ',introDay:4},
-  {id:20,en:'onomatopoeia',ja:'擬音語',introDay:4},
-];
+  /* ---------- state ---------- */
+  let words = loadWords();
+  let settings = Object.assign({ mastery:2 }, loadSettings());
 
-const DAY_LABELS = {1:'新出①',2:'新出②',3:'新出③',4:'新出④',5:'復習A',6:'復習B',
-  7:'テスト①',8:'テスト②',9:'テスト③',10:'テスト④',11:'テスト⑤',12:'テスト⑥',13:'テスト⑦',14:'本番想定'};
-const DAYS = Object.keys(DAY_LABELS).map(Number);
+  function loadWords(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveWords(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(words)); }
+  function loadSettings(){
+    try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
 
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return { words: DEFAULT_WORDS, nextId: 21, stats:{}, steps:{}, dayDone:{}, dayScore:{} };
-}
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-let state = loadState();
-let view = { day:1, showInfo:false, showManager:false, confirmReset:false, revealJa:{},
-  testQueue:null, testIdx:0, testHits:[] };
-
-function dayType(d){ return d<=6 ? 'practice' : 'test'; }
-function dayWordIds(d){
-  if(d<=4) return state.words.filter(w=>w.introDay===d).map(w=>w.id);
-  if(d===5) return state.words.filter(w=>w.introDay===1||w.introDay===2).map(w=>w.id);
-  if(d===6) return state.words.filter(w=>w.introDay===3||w.introDay===4).map(w=>w.id);
-  return state.words.map(w=>w.id);
-}
-function wordById(id){ return state.words.find(w=>w.id===id); }
-function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
-function buildQueue(){
-  const q=[];
-  state.words.forEach(w=>{
-    const s = state.stats[w.id] || {correct:0,wrong:0,streak:0};
-    q.push(w.id);
-    if(s.streak<2) q.push(w.id);
-  });
-  return shuffle(q);
-}
-
-function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-function render(){
-  const el = document.getElementById('board');
-  const doneCount = DAYS.filter(d=>state.dayDone[d]).length;
-  const weak = state.words.filter(w=>{ const s=state.stats[w.id]; return s && s.streak<2 && (s.correct+s.wrong)>0; });
-  const mastered = state.words.filter(w=>{ const s=state.stats[w.id]; return s && s.streak>=3; });
-
-  let html = `
-  <div class="topbar">
-    <div>
-      <h1>スペリング特訓ボード</h1>
-      <p class="sub">2週間で「聞いて書ける」を目指す練習表</p>
-    </div>
-    <div style="display:flex; gap:6px;">
-      <button class="iconbtn" onclick="toggleManager()" title="単語を編集">&#9998;</button>
-      <button class="iconbtn" onclick="toggleInfo()" title="使い方">?</button>
-    </div>
-  </div>`;
-
-  if(view.showInfo){
-    html += `<div class="infoBox">
-      <b>Day1〜6</b>：カードの&#128064;見る→&#128584;かくす→&#9999;かく→&#9989;たしかめ、の順にボタンを押して練習。<br>
-      「かく」では画面に指（またはマウス）でなぞって書ける練習用のボードが出るよ。「たしかめ」で正解を表示して、書けたものと見比べて○×を判定してね。<br>
-      <b>Day7〜14</b>：先生が単語を言うテスト形式。読み上げて紙に書かせ、○×だけタップ。にがてな単語ほど多めに出てくるよ。<br>
-      <b>&#9998; 単語を編集</b>から、単語の追加・変更・入れ替えができるよ。
-    </div>`;
+  /* ---------- speech ---------- */
+  let voices = [];
+  function loadVoices(){ voices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }
+  if ("speechSynthesis" in window){
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+  function speak(text){
+    if (!("speechSynthesis" in window) || !text) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const en = voices.find(v => /en-US/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang));
+    if (en) u.voice = en;
+    u.lang = en ? en.lang : "en-US";
+    u.rate = 0.85;
+    speechSynthesis.speak(u);
   }
 
-  if(view.showManager){
-    html += renderManager();
-  } else {
-    html += `
-    <div class="progress">${DAYS.map(d=>`<div class="pdot ${state.dayDone[d]?'done':''}">${d}</div>`).join('')}</div>
-    <p class="doneCount">完了 ${doneCount} / 14 日</p>
-    <div class="tabs">${DAYS.map(d=>`<button class="tab ${view.day===d?'active':''}" onclick="setDay(${d})">Day${d} ${DAY_LABELS[d]}</button>`).join('')}</div>
-    `;
-    html += dayType(view.day)==='practice' ? renderPractice() : renderTest();
+  /* ---------- tab navigation ---------- */
+  const tabs = document.querySelectorAll("nav.tabs button");
+  const screens = document.querySelectorAll("section.screen");
+  tabs.forEach(btn => btn.addEventListener("click", () => {
+    tabs.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const name = btn.dataset.screen;
+    screens.forEach(s => s.classList.toggle("active", s.id === "screen-" + name));
+    if (name === "practice") startPractice();
+    if (name === "test") { if(!testState.active) startTest(); }
+  }));
+  document.getElementById("screen-manage").classList.add("active");
 
-    html += `<div class="weakSection">
-      <p class="weakTitle">にがてリスト</p>`;
-    if(weak.length===0){
-      html += `<p style="font-size:12px;color:var(--muted);">まだ苦手な単語は記録されていません（練習やテストをすると出てきます）</p>`;
+  /* ---------- manage screen ---------- */
+  const listEl = document.getElementById("wordlist");
+  const emptyMsg = document.getElementById("empty-msg");
+  const wordcountEl = document.getElementById("wordcount");
+  const inEn = document.getElementById("in-en");
+  const inJa = document.getElementById("in-ja");
+  let editingId = null;
+
+  function renderList(){
+    listEl.innerHTML = "";
+    emptyMsg.classList.toggle("hidden", words.length > 0);
+    wordcountEl.textContent = words.length + " words";
+    words.forEach(w => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="en">${escapeHtml(w.en)}</span>
+        <span class="ja">${escapeHtml(w.ja || "")}</span>
+        <span class="actions">
+          <button class="btn btn-ghost btn-sm" data-act="speak" data-id="${w.id}">🔊</button>
+          <button class="btn btn-ghost btn-sm" data-act="edit" data-id="${w.id}">編集</button>
+          <button class="btn btn-ghost btn-sm" data-act="del" data-id="${w.id}">削除</button>
+        </span>`;
+      listEl.appendChild(li);
+    });
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  document.getElementById("btn-add").addEventListener("click", () => {
+    const en = inEn.value.trim();
+    const ja = inJa.value.trim();
+    if (!en) { inEn.focus(); return; }
+    if (editingId){
+      const w = words.find(w => w.id === editingId);
+      if (w){ w.en = en; w.ja = ja; }
+      editingId = null;
+      document.getElementById("btn-add").textContent = "追加";
     } else {
-      html += `<div class="tags">${weak.map(w=>`<span class="tag">${esc(w.en)}</span>`).join('')}</div>`;
+      words.push({ id: uid(), en, ja });
     }
-    if(mastered.length>0){
-      html += `<div class="tags">${mastered.map(w=>`<span class="tag mastered">${esc(w.en)}</span>`).join('')}</div>`;
-    }
-    html += `</div>`;
-
-    html += `<div class="footerRow">`;
-    if(!view.confirmReset){
-      html += `<button onclick="view.confirmReset=true; render();">&#8635; 記録をリセット</button>`;
-    } else {
-      html += `本当にリセットする？ <button onclick="resetAll()"><b>はい</b></button> / <button onclick="view.confirmReset=false; render();">いいえ</button>`;
-    }
-    html += `</div>`;
-  }
-
-  el.innerHTML = html;
-  initCanvases();
-}
-
-function renderPractice(){
-  const ids = dayWordIds(view.day);
-  if(ids.length===0){
-    return `<p style="font-size:12px;color:var(--muted);">この日に割り当てられた単語がありません。「&#9998; 単語を編集」から追加してね。</p>`;
-  }
-  return ids.map(id=>renderWordCard(id)).join('');
-}
-
-function renderWordCard(id){
-  const w = wordById(id);
-  const key = view.day+'-'+id;
-  const st = state.steps[key] || {mode:'idle', graded:false};
-  const stages = [['&#128064;','見る','look'],['&#128584;','かくす','cover'],['&#9999;&#65039;','かく','write'],['&#9989;','たしかめ','check']];
-
-  let body;
-  if(st.mode==='look'){
-    body = `<div class="wordDisplay">${esc(w.en)}</div>`;
-  } else if(st.mode==='cover'){
-    const qmarks = '？'.repeat(Math.max(3, Math.min(w.en.replace(/\s/g,'').length, 10)));
-    body = `<div class="wordDisplay covered">${qmarks}</div>`;
-  } else if(st.mode==='write'){
-    body = `<div class="writeArea">
-      <canvas id="cv-${key}" class="padCanvas"></canvas>
-      <button class="clearBtn" onclick="clearCanvas('${key}')">けす</button>
-    </div>`;
-  } else if(st.mode==='check'){
-    if(st.graded){
-      const color = st.graded==='correct' ? 'var(--green)' : 'var(--red)';
-      const msg = st.graded==='correct' ? '○ せいかい！' : '× もういちど練習しよう';
-      body = `<div class="checkArea">
-        <p class="answerText">正解：<b>${esc(w.en)}</b></p>
-        <p class="gradedNote" style="color:${color}">${msg}</p>
-      </div>`;
-    } else {
-      body = `<div class="checkArea">
-        <p class="answerText">正解：<b>${esc(w.en)}</b></p>
-        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">書けたものと見比べて判定してね</p>
-        <div class="answerRow">
-          <button class="ansBtn ok" onclick="gradeWord(${id},true)">○</button>
-          <button class="ansBtn ng" onclick="gradeWord(${id},false)">×</button>
-        </div>
-      </div>`;
-    }
-  } else {
-    body = `<p class="idleHint">&#128064;から順番にボタンを押してね</p>`;
-  }
-
-  return `<div class="card ${st.graded?'allDone':''}">
-    <div class="wtop">
-      <span style="font-size:11px;color:var(--muted);">単語カード</span>
-      <button class="jaBtn" onclick="toggleJa(${id})">${view.revealJa[id]?esc(w.ja):'意味'}</button>
-    </div>
-    <div class="stages">
-      ${stages.map(s=>`<button class="stage ${st.mode===s[2]?'active':''}" onclick="setStage(${id},'${s[2]}')">${s[0]}<span>${s[1]}</span></button>`).join('')}
-    </div>
-    <div class="cardBody">${body}</div>
-  </div>`;
-}
-
-function renderTest(){
-  if(!view.testQueue){
-    const prev = state.dayScore[view.day];
-    return `<div class="testBox">
-      ${prev?`<p style="font-family:'IBM Plex Mono',monospace;color:var(--green);font-size:13px;margin-bottom:10px;">前回のスコア：${prev.correct} / ${prev.total}</p>`:''}
-      <p style="font-size:13px;margin-bottom:16px;">単語を読み上げて、紙に書かせてください。書けたら○か×をタップしてね。</p>
-      <button class="startBtn" onclick="startTest()">テストをはじめる（全${state.words.length}語）</button>
-    </div>`;
-  }
-  const id = view.testQueue[view.testIdx];
-  const w = wordById(id);
-  return `<div class="testBox">
-    <p class="qcount">${view.testIdx+1} / ${view.testQueue.length}</p>
-    <p class="qword">${esc(w.en)}</p>
-    <p class="qhint">これを読み上げて、書けたら判定してね</p>
-    <div class="answerRow">
-      <button class="ansBtn ok" onclick="markAnswer(true)">○</button>
-      <button class="ansBtn ng" onclick="markAnswer(false)">×</button>
-    </div>
-  </div>`;
-}
-
-function renderManager(){
-  let html = `<div class="manager"><p class="managerTitle">単語を編集</p>`;
-  html += state.words.map(w=>`
-    <div class="mrow">
-      <input type="text" value="${esc(w.en)}" onchange="updateWord(${w.id},'en',this.value)" placeholder="英単語">
-      <input type="text" value="${esc(w.ja)}" onchange="updateWord(${w.id},'ja',this.value)" placeholder="意味">
-      <select onchange="updateWord(${w.id},'introDay',parseInt(this.value))">
-        ${[1,2,3,4].map(d=>`<option value="${d}" ${w.introDay===d?'selected':''}>Day${d}</option>`).join('')}
-      </select>
-      <button class="delBtn" onclick="deleteWord(${w.id})">&#10005;</button>
-    </div>`).join('');
-  html += `
-    <div class="addForm">
-      <input type="text" id="newEn" placeholder="新しい英単語">
-      <input type="text" id="newJa" placeholder="意味（任意）">
-      <select id="newDay">${[1,2,3,4].map(d=>`<option value="${d}">Day${d}</option>`).join('')}</select>
-      <button class="addBtn" onclick="addWord()">＋追加</button>
-    </div>
-    <div class="footerRow" style="margin-top:14px;"><button onclick="toggleManager()">← 練習画面にもどる</button></div>
-  </div>`;
-  return html;
-}
-
-// --- actions ---
-function toggleInfo(){ view.showInfo = !view.showInfo; render(); }
-function toggleManager(){ view.showManager = !view.showManager; render(); }
-function setDay(d){ view.day=d; view.testQueue=null; render(); }
-function toggleJa(id){ view.revealJa[id] = !view.revealJa[id]; render(); }
-
-function setStage(id, mode){
-  const key = view.day+'-'+id;
-  const st = state.steps[key] || {mode:'idle', graded:false};
-  st.mode = mode;
-  state.steps[key] = st;
-  saveState(); render();
-}
-
-function clearCanvas(key){
-  const cv = document.getElementById('cv-'+key);
-  if(cv){ const ctx=cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height); }
-}
-
-function gradeWord(id, correct){
-  const key = view.day+'-'+id;
-  const st = state.steps[key] || {mode:'check', graded:false};
-  st.mode = 'check';
-  st.graded = correct ? 'correct' : 'wrong';
-  state.steps[key] = st;
-
-  const s = state.stats[id] || {correct:0,wrong:0,streak:0};
-  state.stats[id] = correct
-    ? {correct:s.correct+1, wrong:s.wrong, streak:s.streak+1}
-    : {correct:s.correct, wrong:s.wrong+1, streak:0};
-
-  const ids = dayWordIds(view.day);
-  const allGraded = ids.length>0 && ids.every(wid => {
-    const k = view.day+'-'+wid;
-    const s2 = state.steps[k];
-    return s2 && s2.graded;
+    inEn.value = ""; inJa.value = ""; inEn.focus();
+    saveWords(); renderList();
   });
-  if(allGraded) state.dayDone[view.day] = true;
+  [inEn, inJa].forEach(el => el.addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btn-add").click();
+  }));
 
-  saveState(); render();
-}
-
-function initCanvases(){
-  document.querySelectorAll('.padCanvas').forEach(cv=>{
-    if(cv.dataset.inited) return;
-    cv.dataset.inited = '1';
-    const ctx = cv.getContext('2d');
-    const ratio = window.devicePixelRatio || 1;
-    const rect = cv.getBoundingClientRect();
-    cv.width = Math.max(rect.width,1) * ratio;
-    cv.height = Math.max(rect.height,1) * ratio;
-    ctx.scale(ratio, ratio);
-    ctx.strokeStyle = '#1E2530';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    let drawing = false;
-    function pos(e){
-      const r = cv.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
+  listEl.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const w = words.find(w => w.id === id);
+    if (!w) return;
+    if (btn.dataset.act === "del"){
+      words = words.filter(x => x.id !== id);
+      saveWords(); renderList();
+    } else if (btn.dataset.act === "edit"){
+      inEn.value = w.en; inJa.value = w.ja || "";
+      editingId = id;
+      document.getElementById("btn-add").textContent = "更新";
+      inEn.focus();
+    } else if (btn.dataset.act === "speak"){
+      speak(w.en);
     }
-    cv.addEventListener('pointerdown', (e)=>{ drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); });
-    cv.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); });
-    window.addEventListener('pointerup', ()=>{ drawing=false; });
   });
-}
 
-function startTest(){
-  view.testQueue = buildQueue();
-  view.testIdx = 0;
-  view.testHits = [];
-  render();
-}
-function markAnswer(correct){
-  const id = view.testQueue[view.testIdx];
-  const s = state.stats[id] || {correct:0,wrong:0,streak:0};
-  state.stats[id] = correct
-    ? {correct:s.correct+1, wrong:s.wrong, streak:s.streak+1}
-    : {correct:s.correct, wrong:s.wrong+1, streak:0};
-  view.testHits.push({id, correct});
+  document.getElementById("mastery-select").value = String(settings.mastery);
+  document.getElementById("mastery-select").addEventListener("change", e => {
+    settings.mastery = parseInt(e.target.value, 10); saveSettings();
+  });
 
-  if(view.testIdx+1 >= view.testQueue.length){
-    const uniqueCorrect = new Set(view.testHits.filter(h=>h.correct).map(h=>h.id)).size;
-    state.dayDone[view.day] = true;
-    state.dayScore[view.day] = {correct: uniqueCorrect, total: state.words.length};
-    view.testQueue = null;
-  } else {
-    view.testIdx++;
+  renderList();
+
+  /* ---------- normalize for checking ----------
+     strips stray characters some Android keyboards insert (trailing "." from
+     double-space autocorrect, smart quotes, extra spaces) so a correctly
+     spelled word isn't marked wrong. */
+  function norm(s){
+    return String(s || "")
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/[\u2018\u2019]/g, "'")   // curly apostrophes -> straight
+      .replace(/[^a-z' -]/g, "")         // keep only letters, apostrophe, hyphen, space
+      .replace(/\s+/g, " ")
+      .trim();
   }
-  saveState(); render();
-}
-function resetAll(){
-  state = { words: state.words, nextId: state.nextId, stats:{}, steps:{}, dayDone:{}, dayScore:{} };
-  view.confirmReset = false;
-  view.testQueue = null;
-  saveState(); render();
-}
-function updateWord(id, field, value){
-  const w = wordById(id);
-  if(!w) return;
-  w[field] = value;
-  saveState();
-}
-function deleteWord(id){
-  state.words = state.words.filter(w=>w.id!==id);
-  saveState(); render();
-}
-function addWord(){
-  const en = document.getElementById('newEn').value.trim();
-  const ja = document.getElementById('newJa').value.trim();
-  const dayVal = parseInt(document.getElementById('newDay').value);
-  if(!en) return;
-  state.words.push({ id: state.nextId, en, ja, introDay: dayVal });
-  state.nextId += 1;
-  saveState(); render();
-}
 
-render();
+  /* ---------- practice mode ---------- */
+  const PRACTICE_LINES = 5;
+  const practiceEls = {
+    pill: document.getElementById("practice-pill"),
+    ja: document.getElementById("practice-ja"),
+    ghost: document.getElementById("practice-ghost"),
+    grid: document.getElementById("practice-grid"),
+    flash: document.getElementById("practice-flash"),
+    speakBtn: document.getElementById("practice-speak"),
+    hintBtn: document.getElementById("practice-hint"),
+    skipBtn: document.getElementById("practice-skip"),
+  };
+  let practiceState = { order: [], idx: 0, current: null, hintShown: false };
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildPracticeLines(){
+    practiceEls.grid.innerHTML = "";
+    for (let i = 0; i < PRACTICE_LINES; i++){
+      const inp = document.createElement("input");
+      inp.className = "pline";
+      inp.type = "text";
+      inp.autocomplete = "off";
+      inp.autocapitalize = "off";
+      inp.spellcheck = false;
+      inp.placeholder = String(i + 1);
+      practiceEls.grid.appendChild(inp);
+    }
+  }
+  practiceEls.grid.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.classList.contains("pline")){
+      const inputs = Array.from(practiceEls.grid.querySelectorAll(".pline"));
+      const idx = inputs.indexOf(e.target);
+      if (idx > -1 && idx < inputs.length - 1) inputs[idx + 1].focus();
+      else e.target.blur();
+    }
+  });
+
+  function startPractice(){
+    if (!words.length){
+      practiceEls.pill.textContent = "0 / 0";
+      practiceEls.ja.textContent = "";
+      practiceEls.ghost.textContent = "";
+      practiceEls.grid.innerHTML = "";
+      return;
+    }
+    practiceState.order = shuffle(words);
+    practiceState.idx = 0;
+    showPracticeCard();
+  }
+  function showPracticeCard(){
+    if (practiceState.idx >= practiceState.order.length) practiceState.order = shuffle(words);
+    if (practiceState.idx >= practiceState.order.length) practiceState.idx = 0;
+    const w = practiceState.order[practiceState.idx];
+    practiceState.current = w;
+    practiceState.hintShown = false;
+    practiceEls.pill.textContent = (practiceState.idx + 1) + " / " + practiceState.order.length;
+    practiceEls.ja.textContent = w.ja || "";
+    practiceEls.ghost.textContent = "";
+    practiceEls.hintBtn.textContent = "ヒント";
+    buildPracticeLines();
+    speak(w.en);
+  }
+  practiceEls.hintBtn.addEventListener("click", () => {
+    if (!practiceState.current) return;
+    practiceState.hintShown = !practiceState.hintShown;
+    practiceEls.ghost.textContent = practiceState.hintShown ? practiceState.current.en : "";
+    practiceEls.hintBtn.textContent = practiceState.hintShown ? "ヒントをかくす" : "ヒント";
+  });
+  practiceEls.skipBtn.addEventListener("click", () => { practiceState.idx++; showPracticeCard(); });
+  practiceEls.speakBtn.addEventListener("click", () => practiceState.current && speak(practiceState.current.en));
+
+  /* ---------- test mode (spaced repeat until mastered) ---------- */
+  const testEls = {
+    pill: document.getElementById("test-pill"),
+    streak: document.getElementById("test-streak"),
+    ja: document.getElementById("test-ja"),
+    input: document.getElementById("test-input"),
+    feedback: document.getElementById("test-feedback"),
+    flash: document.getElementById("test-flash"),
+    speakBtn: document.getElementById("test-speak"),
+    checkBtn: document.getElementById("test-check"),
+    restartBtn: document.getElementById("test-restart"),
+    live: document.getElementById("test-live"),
+    done: document.getElementById("test-done"),
+    doneMsg: document.getElementById("test-done-msg"),
+    againBtn: document.getElementById("test-again"),
+  };
+  let testState = { queue: [], progress: {}, total: 0, mastered: 0, streak: 0, current: null, active: false, misses: 0 };
+
+  function startTest(){
+    testEls.done.classList.add("hidden");
+    testEls.live.classList.remove("hidden");
+    if (!words.length){
+      testEls.pill.textContent = "0 / 0";
+      testEls.ja.textContent = "";
+      testEls.feedback.textContent = "先に単語帳から単語を登録してね";
+      testEls.feedback.className = "feedback";
+      testState.active = false;
+      return;
+    }
+    testState.queue = shuffle(words).map(w => w);
+    testState.progress = {};
+    words.forEach(w => testState.progress[w.id] = 0);
+    testState.total = words.length;
+    testState.mastered = 0;
+    testState.streak = 0;
+    testState.misses = 0;
+    testState.active = true;
+    nextTestCard();
+  }
+  function masteredCount(){
+    return Object.values(testState.progress).filter(v => v >= settings.mastery).length;
+  }
+  function nextTestCard(){
+    testState.mastered = masteredCount();
+    testEls.pill.textContent = testState.mastered + " / " + testState.total;
+    testEls.streak.textContent = "streak " + testState.streak;
+
+    if (testState.mastered >= testState.total){
+      finishTest();
+      return;
+    }
+    // find next word in queue that is not yet mastered
+    let w = null;
+    while (testState.queue.length){
+      const cand = testState.queue.shift();
+      if (testState.progress[cand.id] < settings.mastery){ w = cand; break; }
+    }
+    if (!w){
+      // refill queue, weighting words that still need more correct answers
+      const remaining = words.filter(x => testState.progress[x.id] < settings.mastery);
+      testState.queue = shuffle(remaining.concat(remaining));
+      w = testState.queue.shift();
+    }
+    testState.current = w;
+    testEls.ja.textContent = w.ja || "";
+    testEls.input.value = "";
+    testEls.feedback.textContent = "";
+    testEls.feedback.className = "feedback";
+    testEls.input.focus();
+    speak(w.en);
+  }
+  function checkTest(){
+    const w = testState.current;
+    if (!w || !testState.active) return;
+    const ok = norm(testEls.input.value) === norm(w.en);
+    if (ok){
+      testState.progress[w.id] = (testState.progress[w.id] || 0) + 1;
+      testState.streak++;
+      testEls.feedback.textContent = "◯ せいかい！ (" + testState.progress[w.id] + "/" + settings.mastery + ")";
+      testEls.feedback.className = "feedback ok";
+    } else {
+      testState.progress[w.id] = 0;
+      testState.streak = 0;
+      testState.misses++;
+      testEls.feedback.textContent = "✕ 正解は " + w.en + "・もう一度あとで出るよ";
+      testEls.feedback.className = "feedback ng";
+      testEls.flash.classList.add("shake");
+      setTimeout(() => testEls.flash.classList.remove("shake"), 300);
+      // put it back a bit later in the queue
+      const reinsertAt = Math.min(testState.queue.length, 2);
+      testState.queue.splice(reinsertAt, 0, w);
+    }
+    setTimeout(nextTestCard, ok ? 550 : 1400);
+  }
+  function finishTest(){
+    testState.active = false;
+    testEls.live.classList.add("hidden");
+    testEls.done.classList.remove("hidden");
+    testEls.doneMsg.textContent = testState.total + "語 マスター・まちがえた回数 " + testState.misses + "回";
+  }
+  testEls.checkBtn.addEventListener("click", checkTest);
+  testEls.restartBtn.addEventListener("click", startTest);
+  testEls.againBtn.addEventListener("click", startTest);
+  testEls.speakBtn.addEventListener("click", () => testState.current && speak(testState.current.en));
+  testEls.input.addEventListener("keydown", e => { if (e.key === "Enter") checkTest(); });
+
+})();
 </script>
 </body>
 </html>
