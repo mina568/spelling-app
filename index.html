@@ -194,8 +194,8 @@
 
   /* ---- handwriting pads ---- */
   .practice-grid{
-    display:flex; flex-direction:column; align-items:center; gap:8px;
-    margin-top:10px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    margin-top:4px;
     flex:1; min-height:120px;
   }
   .pad-wrap{
@@ -226,19 +226,20 @@
   #screen-practice.active{
     display:flex; flex-direction:column; height:100%; min-height:0;
   }
-  #screen-practice .pager,
-  #screen-practice .stagebar{ flex:none; }
+  #screen-practice .pager{ flex:none; margin-top:6px; }
+  #screen-practice .stagebar{ flex:none; margin-top:2px; }
   #screen-practice .card{
     flex:1; min-height:0; display:flex; flex-direction:column;
-    padding-top:14px; padding-bottom:14px;
+    padding-top:8px; padding-bottom:10px;
   }
   #screen-practice .flash{
     flex:1; min-height:0; display:flex; flex-direction:column;
+    padding-top:2px; padding-bottom:0;
   }
-  #screen-practice .speaker,
-  #screen-practice .ja-hint,
-  #screen-practice .ghost-word{ flex:none; }
-  #screen-practice .card-actions{ flex:none; margin-top:10px; }
+  #screen-practice .speaker{ flex:none; align-self:center; width:40px; height:40px; font-size:17px; margin:0 0 4px; }
+  #screen-practice .ja-hint{ flex:none; margin:0 0 4px; min-height:0; }
+  #screen-practice .ghost-word{ flex:none; margin:0 0 2px; min-height:22px; font-size:22px; }
+  #screen-practice .card-actions{ flex:none; margin-top:8px; }
 
   .feedback{min-height:26px; margin-top:12px; font-weight:700; font-size:14px;}
   .feedback.ok{color:var(--mint);}
