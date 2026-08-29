@@ -155,14 +155,17 @@
   /* ---- practice / test flash card ---- */
   .stagebar{display:flex; align-items:center; justify-content:space-between; margin-top:6px;}
   .pager{
-    display:flex; align-items:center; justify-content:center; gap:12px;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px;
     margin-top:16px;
   }
-  .pager-label{
-    font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-soft); font-weight:700;
-    min-width:92px; text-align:center;
+  .page-num{
+    width:38px; height:38px; border-radius:50%; flex:none;
+    border:2px solid var(--line); background:#fff;
+    font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px;
+    color:var(--ink-soft); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
   }
-  .pager button:disabled{opacity:.35; pointer-events:none;}
+  .page-num.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .progress-pill{
     font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--paper-dim);
     padding:5px 10px; border-radius:20px; color:var(--ink-soft);
@@ -279,11 +282,7 @@
 
     <!-- ============ 練習モード ============ -->
     <section class="screen" id="screen-practice">
-      <div class="pager" id="practice-pager">
-        <button class="btn btn-ghost btn-sm" id="practice-page-prev">◀</button>
-        <span class="pager-label" id="practice-page-label">ページ 1 / 1</span>
-        <button class="btn btn-ghost btn-sm" id="practice-page-next">▶</button>
-      </div>
+      <div class="pager" id="practice-pager"></div>
       <div class="stagebar">
         <span class="progress-pill" id="practice-pill">0 / 0</span>
       </div>
@@ -305,11 +304,7 @@
     <!-- ============ テストモード ============ -->
     <section class="screen" id="screen-test">
       <div id="test-live">
-        <div class="pager" id="test-pager">
-          <button class="btn btn-ghost btn-sm" id="test-page-prev">◀</button>
-          <span class="pager-label" id="test-page-label">ページ 1 / 1</span>
-          <button class="btn btn-ghost btn-sm" id="test-page-next">▶</button>
-        </div>
+        <div class="pager" id="test-pager"></div>
         <div class="stagebar">
           <span class="progress-pill" id="test-pill">0 / 0</span>
           <span class="streak" id="test-streak">streak 0</span>
@@ -615,6 +610,20 @@
     if (!pages.length) pages.push([]);
     return pages;
   }
+  const CIRCLED_NUMS = ["①","②","③","④","⑤","⑥","⑦","⑧","⑨","⑩","⑪","⑫","⑬","⑭","⑮","⑯","⑰","⑱","⑲","⑳"];
+  function circledNum(n){ return CIRCLED_NUMS[n - 1] || String(n); }
+  function renderPager(containerEl, pageCount, currentIndex, onSelect){
+    containerEl.innerHTML = "";
+    for (let i = 0; i < pageCount; i++){
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "page-num" + (i === currentIndex ? " active" : "");
+      btn.textContent = circledNum(i + 1);
+      btn.setAttribute("aria-label", (i + 1) + "ページ目");
+      btn.addEventListener("click", () => onSelect(i));
+      containerEl.appendChild(btn);
+    }
+  }
 
   /* ---------- practice mode ---------- */
   const PRACTICE_LINES = 5;
@@ -628,9 +637,7 @@
     hintBtn: document.getElementById("practice-hint"),
     skipBtn: document.getElementById("practice-skip"),
     clearBtn: document.getElementById("practice-clear"),
-    pagePrev: document.getElementById("practice-page-prev"),
-    pageNext: document.getElementById("practice-page-next"),
-    pageLabel: document.getElementById("practice-page-label"),
+    pager: document.getElementById("practice-pager"),
   };
   let practiceState = { order: [], idx: 0, current: null, hintShown: false, pageWords: [] };
   let practicePageIndex = 0;
@@ -659,9 +666,10 @@
     const pages = getPages();
     if (practicePageIndex >= pages.length) practicePageIndex = pages.length - 1;
     if (practicePageIndex < 0) practicePageIndex = 0;
-    practiceEls.pageLabel.textContent = "ページ " + (practicePageIndex + 1) + " / " + pages.length;
-    practiceEls.pagePrev.disabled = practicePageIndex <= 0;
-    practiceEls.pageNext.disabled = practicePageIndex >= pages.length - 1;
+    renderPager(practiceEls.pager, pages.length, practicePageIndex, (i) => {
+      practicePageIndex = i;
+      startPractice();
+    });
     const pageWords = pages[practicePageIndex] || [];
     practiceState.pageWords = pageWords;
     if (!pageWords.length){
@@ -698,13 +706,6 @@
   practiceEls.skipBtn.addEventListener("click", () => { practiceState.idx++; showPracticeCard(); });
   practiceEls.speakBtn.addEventListener("click", () => practiceState.current && speak(practiceState.current.en));
   practiceEls.clearBtn.addEventListener("click", () => practicePads.forEach(p => p.clear()));
-  practiceEls.pagePrev.addEventListener("click", () => {
-    if (practicePageIndex > 0){ practicePageIndex--; startPractice(); }
-  });
-  practiceEls.pageNext.addEventListener("click", () => {
-    const pages = getPages();
-    if (practicePageIndex < pages.length - 1){ practicePageIndex++; startPractice(); }
-  });
 
   /* ---------- test mode (spaced repeat until mastered) ---------- */
   const testEls = {
@@ -726,9 +727,7 @@
     done: document.getElementById("test-done"),
     doneMsg: document.getElementById("test-done-msg"),
     againBtn: document.getElementById("test-again"),
-    pagePrev: document.getElementById("test-page-prev"),
-    pageNext: document.getElementById("test-page-next"),
-    pageLabel: document.getElementById("test-page-label"),
+    pager: document.getElementById("test-pager"),
   };
   let testState = { queue: [], progress: {}, total: 0, mastered: 0, streak: 0, current: null, active: false, misses: 0, pageWords: [] };
   let testPageIndex = 0;
@@ -746,9 +745,10 @@
     const pages = getPages();
     if (testPageIndex >= pages.length) testPageIndex = pages.length - 1;
     if (testPageIndex < 0) testPageIndex = 0;
-    testEls.pageLabel.textContent = "ページ " + (testPageIndex + 1) + " / " + pages.length;
-    testEls.pagePrev.disabled = testPageIndex <= 0;
-    testEls.pageNext.disabled = testPageIndex >= pages.length - 1;
+    renderPager(testEls.pager, pages.length, testPageIndex, (i) => {
+      testPageIndex = i;
+      startTest();
+    });
     const pageWords = pages[testPageIndex] || [];
     testState.pageWords = pageWords;
     if (!pageWords.length){
@@ -769,13 +769,6 @@
     testState.active = true;
     nextTestCard();
   }
-  testEls.pagePrev.addEventListener("click", () => {
-    if (testPageIndex > 0){ testPageIndex--; startTest(); }
-  });
-  testEls.pageNext.addEventListener("click", () => {
-    const pages = getPages();
-    if (testPageIndex < pages.length - 1){ testPageIndex++; startTest(); }
-  });
   function masteredCount(){
     return Object.values(testState.progress).filter(v => v >= settings.mastery).length;
   }
